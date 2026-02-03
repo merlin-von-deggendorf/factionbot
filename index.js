@@ -4,6 +4,9 @@ import {
   ButtonBuilder,
   ButtonStyle,
   MessageFlags,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
 } from "discord.js";
 import dbClient from "./db.js";
 import botClient from "./bot.js";
@@ -34,10 +37,37 @@ await botClient.createSlashCommand(
     );
 
     await interaction.reply({
-      content: "Create a faction?",
+      content: "Create a faction? Click ok to enter a name.",
       components: [row],
       flags: MessageFlags.Ephemeral,
     });
   },
   "Create a faction"
 );
+
+client.on("interactionCreate", async (interaction) => {
+  if (interaction.isButton() && interaction.customId === "createFaction_ok") {
+    const modal = new ModalBuilder()
+      .setCustomId("createFaction_modal")
+      .setTitle("Create Faction");
+
+    const nameInput = new TextInputBuilder()
+      .setCustomId("createFaction_name")
+      .setLabel("Faction name")
+      .setStyle(TextInputStyle.Short)
+      .setRequired(true);
+
+    const row = new ActionRowBuilder().addComponents(nameInput);
+    modal.addComponents(row);
+
+    await interaction.showModal(modal);
+  }
+
+  if (interaction.isModalSubmit() && interaction.customId === "createFaction_modal") {
+    const factionName = interaction.fields.getTextInputValue("createFaction_name");
+    await interaction.reply({
+      content: `Faction name: ${factionName}`,
+      flags: MessageFlags.Ephemeral,
+    });
+  }
+});
