@@ -8,6 +8,7 @@ import {
   TextInputBuilder,
   TextInputStyle,
 } from "discord.js";
+import { LabelBuilder } from "@discordjs/builders";
 import dbClient from "./db.js";
 import botClient from "./bot.js";
 
@@ -27,7 +28,7 @@ client.on("messageCreate", async (message) => {
 await botClient.connect();
 
 await botClient.createSlashCommand(
-  "createfaction",
+  "generatefaction",
   async (interaction) => {
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -53,12 +54,14 @@ client.on("interactionCreate", async (interaction) => {
 
     const nameInput = new TextInputBuilder()
       .setCustomId("createFaction_name")
-      .setLabel("Faction name")
       .setStyle(TextInputStyle.Short)
       .setRequired(true);
 
-    const row = new ActionRowBuilder().addComponents(nameInput);
-    modal.addComponents(row);
+    const label = new LabelBuilder()
+      .setLabel("Faction name")
+      .setTextInputComponent(nameInput);
+
+    modal.addLabelComponents(label);
 
     await interaction.showModal(modal);
   }
