@@ -21,13 +21,6 @@ export async function connectDb() {
   return db;
 }
 
-export function getDb() {
-  if (!db) {
-    throw new Error("MongoDB not connected. Call connectDb() first.");
-  }
-  return db;
-}
-
 export async function closeDb() {
   if (!db) return;
   await mongo.close();
@@ -36,7 +29,6 @@ export async function closeDb() {
 }
 
 export async function storeMessage(message) {
-  const database = getDb();
   const doc = {
     messageId: message?.id ?? message?.messageId ?? null,
     content: message?.content ?? message?.text ?? "",
@@ -51,5 +43,5 @@ export async function storeMessage(message) {
         : new Date(),
   };
 
-  return database.collection("messages").insertOne(doc);
+  return db.collection("messages").insertOne(doc);
 }
