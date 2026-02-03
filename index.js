@@ -29,6 +29,13 @@ await botClient.createSlashCommand(
   "createfaction",
   async (interaction) => {
     const factionName = interaction.options.getString("name", true);
+    if (factionName.includes("|")) {
+      await interaction.reply({
+        content: "Faction name cannot include the '|' character.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("createFaction_ok")
