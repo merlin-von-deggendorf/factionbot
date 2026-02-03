@@ -19,9 +19,10 @@ const CATEGORY_NAMES = [
 ];
 
 const normalize = (value) => value.toLowerCase();
-const buildChannelName = (factionName) => `${factionName} | 0`;
-const buildLeaderRoleName = (factionName) => `${factionName} | leader`;
-const buildRequestRoleName = (factionName) => `${factionName} | request`;
+const buildChannelName = (factionName) => `${factionName} ~ 0`;
+const buildMemberRoleName = (factionName) => `${factionName} ~ member`;
+const buildLeaderRoleName = (factionName) => `${factionName} ~ leader`;
+const buildRequestRoleName = (factionName) => `${factionName} ~ request`;
 
 const client = botClient.getClient();
 
@@ -55,9 +56,9 @@ await botClient.createSlashCommand(
     }
 
     const factionName = interaction.options.getString("name", true);
-    if (factionName.includes("|")) {
+    if (factionName.includes("~")) {
       await interaction.reply({
-        content: "Faction name cannot include the '|' character.",
+        content: "Faction name cannot include the '~' character.",
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -68,7 +69,7 @@ await botClient.createSlashCommand(
     const guild = interaction.guild;
     if (guild) {
       const channels = await guild.channels.fetch();
-      const prefix = `${factionName} |`.toLowerCase();
+      const prefix = `${factionName} ~`.toLowerCase();
 
       const existing = channels.find(
         (channel) =>
@@ -89,10 +90,12 @@ await botClient.createSlashCommand(
       const factionNameLower = normalize(factionName);
       const leaderRoleName = normalize(buildLeaderRoleName(factionName));
       const requestRoleName = normalize(buildRequestRoleName(factionName));
+      const memberRoleName = normalize(buildMemberRoleName(factionName));
       const roleExists = roles.some((role) => {
         const roleName = normalize(role.name);
         return (
           roleName === factionNameLower ||
+          roleName === memberRoleName ||
           roleName === leaderRoleName ||
           roleName === requestRoleName
         );
@@ -122,7 +125,7 @@ await botClient.createSlashCommand(
         return;
       }
 
-      await guild.roles.create({ name: factionName });
+      await guild.roles.create({ name: buildMemberRoleName(factionName) });
       await guild.roles.create({ name: buildLeaderRoleName(factionName) });
       await guild.roles.create({ name: buildRequestRoleName(factionName) });
 
@@ -252,7 +255,7 @@ await botClient.createSlashCommand(
     }
 
     const roles = await interaction.guild.roles.fetch();
-    const targetRoleName = `${factionName} | leader`.toLowerCase();
+    const targetRoleName = normalize(buildLeaderRoleName(factionName));
     const role = roles.find(
       (r) => r.name.toLowerCase() === targetRoleName
     );
@@ -332,7 +335,7 @@ await botClient.createSlashCommand(
 
     const roles = await guild.roles.fetch();
     const roleNames = [
-      normalize(factionName),
+      normalize(buildMemberRoleName(factionName)),
       normalize(buildLeaderRoleName(factionName)),
       normalize(buildRequestRoleName(factionName)),
     ];
