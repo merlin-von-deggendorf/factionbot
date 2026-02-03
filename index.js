@@ -17,7 +17,7 @@ const CATEGORY_NAMES = [
 
 const normalize = (value) => value.toLowerCase();
 const buildVanillaChannelName = (factionName) => factionName;
-const buildPublicVoiceChannelName = (factionName) => `${factionName} | 0`;
+const buildPublicVoiceChannelName = (factionName) => factionName;
 const buildMemberRoleName = (factionName) => `${factionName} | member`;
 const buildLeaderRoleName = (factionName) => `${factionName} | leader`;
 const buildRequestRoleName = (factionName) => `${factionName} | request`;
@@ -101,52 +101,6 @@ const countFactionRolesFromCache = async (guild) => {
   }
 
   return factions;
-};
-
-const parsePublicVoiceFaction = (name) => {
-  const separator = " | ";
-  const index = name.lastIndexOf(separator);
-  if (index === -1) return null;
-  const faction = name.slice(0, index).trim();
-  return faction.length > 0 ? faction : null;
-};
-
-const updatePublicVoiceCounters = async (guild, counts) => {
-  const channels = await guild.channels.fetch();
-  const publicVoiceCategory = channels.find(
-    (channel) =>
-      channel?.type === ChannelType.GuildCategory &&
-      normalize(channel.name) === "public voice"
-  );
-
-  if (!publicVoiceCategory) return;
-
-  const updates = [];
-  for (const channel of channels.values()) {
-    if (
-      !channel ||
-      channel.type !== ChannelType.GuildVoice ||
-      channel.parentId !== publicVoiceCategory.id
-    ) {
-      continue;
-    }
-    const faction = parsePublicVoiceFaction(channel.name);
-    if (!faction) continue;
-    const entry = counts.get(faction);
-    const totalCount = entry ? entry.total : 0;
-    const desiredName = `${faction} | ${totalCount}`;
-    if (channel.name !== desiredName) {
-      updates.push(
-        channel.setName(desiredName).catch((error) => {
-          console.error("Failed to update voice channel name:", error);
-        })
-      );
-    }
-  }
-
-  if (updates.length > 0) {
-    await Promise.all(updates);
-  }
 };
 
 client.once("clientReady", () => {
@@ -1033,9 +987,6 @@ await botClient.createSlashCommand(
         : lines.join("\n"),
     });
 
-    updatePublicVoiceCounters(guild, counts).catch((error) => {
-      console.error("Failed to update public voice counters:", error);
-    });
   },
   "Count faction roles",
   "guild"
