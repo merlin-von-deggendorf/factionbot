@@ -4,11 +4,8 @@ import {
   ButtonBuilder,
   ButtonStyle,
   MessageFlags,
-  ModalBuilder,
-  TextInputBuilder,
-  TextInputStyle,
+  ApplicationCommandOptionType,
 } from "discord.js";
-import { LabelBuilder } from "@discordjs/builders";
 import dbClient from "./db.js";
 import botClient from "./bot.js";
 
@@ -28,8 +25,9 @@ client.on("messageCreate", async (message) => {
 await botClient.connect();
 
 await botClient.createSlashCommand(
-  "generatefaction",
+  "createfaction",
   async (interaction) => {
+    const factionName = interaction.options.getString("name", true);
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("createFaction_ok")
@@ -38,38 +36,32 @@ await botClient.createSlashCommand(
     );
 
     await interaction.reply({
-      content: "Create a faction? Click ok to enter a name.",
+      content: `Create faction: ${factionName}`,
       components: [row],
       flags: MessageFlags.Ephemeral,
     });
   },
-  "Create a faction"
+  "Create a faction",
+  "guild",
+  [
+    {
+      name: "name",
+      description: "Faction name",
+      type: ApplicationCommandOptionType.String,
+      required: true,
+    },
+  ]
 );
 
 client.on("interactionCreate", async (interaction) => {
   if (interaction.isButton() && interaction.customId === "createFaction_ok") {
-    const modal = new ModalBuilder()
-      .setCustomId("createFaction_modal")
-      .setTitle("Create Faction");
-
-    const nameInput = new TextInputBuilder()
-      .setCustomId("createFaction_name")
-      .setStyle(TextInputStyle.Short)
-      .setRequired(true);
-
-    const label = new LabelBuilder()
-      .setLabel("Faction name")
-      .setTextInputComponent(nameInput);
-
-    modal.addLabelComponents(label);
-
-    await interaction.showModal(modal);
-  }
-
-  if (interaction.isModalSubmit() && interaction.customId === "createFaction_modal") {
-    const factionName = interaction.fields.getTextInputValue("createFaction_name");
+    const prefix = "Create faction: ";
+    const content = interaction.message?.content ?? "";
+    const factionName = content.startsWith(prefix)
+      ? content.slice(prefix.length)
+      : "Faction";
     await interaction.reply({
-      content: `Faction name: ${factionName}`,
+      content: `Faction created: ${factionName}`,
       flags: MessageFlags.Ephemeral,
     });
   }

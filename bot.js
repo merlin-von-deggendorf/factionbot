@@ -32,13 +32,14 @@ class BotClient {
     name,
     behaviour,
     description = "Command",
-    scope = "guild"
+    scope = "guild",
+    options = []
   ) {
     const commandName = name.toLowerCase();
     this.commands.set(commandName, behaviour);
     await this.readyPromise;
 
-    const payload = { name: commandName, description };
+    const payload = { name: commandName, description, options };
 
     if (scope === "global" || scope === "both") {
       await this.client.application.commands.create(payload);
