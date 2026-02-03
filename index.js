@@ -928,7 +928,22 @@ await botClient.createSlashCommand(
       return;
     }
 
-    const counts = await countFactionRoles(guild);
+    let counts;
+    try {
+      counts = await countFactionRoles(guild);
+    } catch (error) {
+      if (error?.name === "GatewayRateLimitError") {
+        const retryAfter =
+          typeof error?.data?.retry_after === "number"
+            ? `${error.data.retry_after.toFixed(1)}s`
+            : "a few seconds";
+        await interaction.editReply({
+          content: `Rate limited by Discord. Try again in ${retryAfter}.`,
+        });
+        return;
+      }
+      throw error;
+    }
     if (counts.size === 0) {
       await interaction.editReply({
         content: "No faction roles found.",
