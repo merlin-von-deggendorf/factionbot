@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { Client, GatewayIntentBits } from "discord.js";
-
+const token = process.env.DISCORD_TOKEN;
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -9,7 +9,7 @@ const client = new Client({
   ],
 });
 
-client.once("ready", () => {
+client.once("clientReady", () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
 
@@ -19,11 +19,5 @@ client.on("messageCreate", (message) => {
     message.channel.send("Hello world!");
   }
 });
-
-const token = process.env.DISCORD_TOKEN;
-if (!token) {
-  console.error("Missing DISCORD_TOKEN in environment.");
-  process.exit(1);
-}
 
 client.login(token);
