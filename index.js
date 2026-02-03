@@ -87,21 +87,37 @@ await botClient.createSlashCommand(
         channel.name.toLowerCase() === "faction public chats"
     );
 
-    if (existingCategory) {
-      await interaction.reply({
-        content: `Setup already done. Category exists: ${existingCategory.name}`,
-        flags: MessageFlags.Ephemeral,
+    let category = existingCategory;
+    if (!category) {
+      category = await guild.channels.create({
+        name: "faction public chats",
+        type: ChannelType.GuildCategory,
       });
-      return;
     }
 
-    const category = await guild.channels.create({
-      name: "faction public chats",
-      type: ChannelType.GuildCategory,
-    });
+    const channelSpecs = [
+      { name: "factions private chat", type: ChannelType.GuildText },
+      { name: "factions public voice", type: ChannelType.GuildVoice },
+      { name: "factions private voice", type: ChannelType.GuildVoice },
+    ];
+
+    for (const spec of channelSpecs) {
+      const existing = channels.find(
+        (channel) =>
+          channel?.type === spec.type &&
+          channel.name.toLowerCase() === spec.name
+      );
+      if (!existing) {
+        await guild.channels.create({
+          name: spec.name,
+          type: spec.type,
+          parent: category.id,
+        });
+      }
+    }
 
     await interaction.reply({
-      content: `Setting up... Created category: ${category.name}`,
+      content: `Setup complete. Category: ${category.name}`,
       flags: MessageFlags.Ephemeral,
     });
   },
