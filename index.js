@@ -5,6 +5,7 @@ import {
   ButtonStyle,
   MessageFlags,
   ApplicationCommandOptionType,
+  ChannelType,
   PermissionsBitField,
 } from "discord.js";
 import dbClient from "./db.js";
@@ -40,14 +41,19 @@ await botClient.createSlashCommand(
     const guild = interaction.guild;
     if (guild) {
       const channels = await guild.channels.fetch();
-      const prefix = `${factionName}|`.toLowerCase();
+      const prefix = `${factionName} |`.toLowerCase();
+      const categoryNames = [
+        "public chat",
+        "public voice",
+        "private chat",
+        "private voice",
+      ];
+
       const existing = channels.find(
         (channel) =>
           channel &&
           channel.parent &&
-          ["public chat", "public voice", "private chat", "private voice"].includes(
-            channel.parent.name.toLowerCase()
-          ) &&
+          categoryNames.includes(channel.parent.name.toLowerCase()) &&
           channel.name.toLowerCase().startsWith(prefix)
       );
 
@@ -74,6 +80,53 @@ await botClient.createSlashCommand(
         });
         return;
       }
+
+      const categories = categoryNames.reduce((acc, name) => {
+        const category = channels.find(
+          (channel) =>
+            channel?.type === ChannelType.GuildCategory &&
+            channel.name.toLowerCase() === name
+        );
+        acc[name] = category ?? null;
+        return acc;
+      }, {});
+
+      if (Object.values(categories).some((category) => !category)) {
+        await interaction.reply({
+          content: "Setup is missing required categories. Run /setup first.",
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+
+      await guild.roles.create({ name: factionName });
+      await guild.roles.create({ name: `${factionName} | leader` });
+
+      const channelName = `${factionName} | 0`;
+
+      await guild.channels.create({
+        name: channelName,
+        type: ChannelType.GuildText,
+        parent: categories["public chat"].id,
+      });
+
+      await guild.channels.create({
+        name: channelName,
+        type: ChannelType.GuildText,
+        parent: categories["private chat"].id,
+      });
+
+      await guild.channels.create({
+        name: channelName,
+        type: ChannelType.GuildVoice,
+        parent: categories["public voice"].id,
+      });
+
+      await guild.channels.create({
+        name: channelName,
+        type: ChannelType.GuildVoice,
+        parent: categories["private voice"].id,
+      });
     }
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -126,10 +179,10 @@ await botClient.createSlashCommand(
     }
 
     const categoryNames = [
-      "faction public chat",
-      "faction public voice",
-      "faction private chat",
-      "faction private voice",
+      "public chat",
+      "public voice",
+      "private chat",
+      "private voice",
     ];
 
     const created = await botClient.ensureCategories(guild, categoryNames);
