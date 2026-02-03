@@ -11,6 +11,18 @@ import {
 import dbClient from "./db.js";
 import botClient from "./bot.js";
 
+const CATEGORY_NAMES = [
+  "public chat",
+  "public voice",
+  "private chat",
+  "private voice",
+];
+
+const normalize = (value) => value.toLowerCase();
+const buildChannelName = (factionName) => `${factionName} | 0`;
+const buildLeaderRoleName = (factionName) => `${factionName} | leader`;
+const buildRequestRoleName = (factionName) => `${factionName} | request`;
+
 const client = botClient.getClient();
 
 client.once("clientReady", () => {
@@ -55,18 +67,12 @@ await botClient.createSlashCommand(
     if (guild) {
       const channels = await guild.channels.fetch();
       const prefix = `${factionName} |`.toLowerCase();
-      const categoryNames = [
-        "public chat",
-        "public voice",
-        "private chat",
-        "private voice",
-      ];
 
       const existing = channels.find(
         (channel) =>
           channel &&
           channel.parent &&
-          categoryNames.includes(channel.parent.name.toLowerCase()) &&
+          CATEGORY_NAMES.includes(normalize(channel.parent.name)) &&
           channel.name.toLowerCase().startsWith(prefix)
       );
 
@@ -79,11 +85,11 @@ await botClient.createSlashCommand(
       }
 
       const roles = await guild.roles.fetch();
-      const factionNameLower = factionName.toLowerCase();
-      const leaderRoleName = `${factionName} | leader`.toLowerCase();
-      const requestRoleName = `${factionName} | request`.toLowerCase();
+      const factionNameLower = normalize(factionName);
+      const leaderRoleName = normalize(buildLeaderRoleName(factionName));
+      const requestRoleName = normalize(buildRequestRoleName(factionName));
       const roleExists = roles.some((role) => {
-        const roleName = role.name.toLowerCase();
+        const roleName = normalize(role.name);
         return (
           roleName === factionNameLower ||
           roleName === leaderRoleName ||
@@ -99,11 +105,11 @@ await botClient.createSlashCommand(
         return;
       }
 
-      const categories = categoryNames.reduce((acc, name) => {
+      const categories = CATEGORY_NAMES.reduce((acc, name) => {
         const category = channels.find(
           (channel) =>
             channel?.type === ChannelType.GuildCategory &&
-            channel.name.toLowerCase() === name
+            normalize(channel.name) === name
         );
         acc[name] = category ?? null;
         return acc;
@@ -118,10 +124,10 @@ await botClient.createSlashCommand(
       }
 
       await guild.roles.create({ name: factionName });
-      await guild.roles.create({ name: `${factionName} | leader` });
-      await guild.roles.create({ name: `${factionName} | request` });
+      await guild.roles.create({ name: buildLeaderRoleName(factionName) });
+      await guild.roles.create({ name: buildRequestRoleName(factionName) });
 
-      const channelName = `${factionName} | 0`;
+      const channelName = buildChannelName(factionName);
 
       await guild.channels.create({
         name: channelName,
@@ -198,10 +204,7 @@ await botClient.createSlashCommand(
     }
 
     const categoryNames = [
-      "public chat",
-      "public voice",
-      "private chat",
-      "private voice",
+      ...CATEGORY_NAMES,
     ];
 
     const created = await botClient.ensureCategories(guild, categoryNames);
@@ -315,20 +318,14 @@ await botClient.createSlashCommand(
     }
 
     const channels = await guild.channels.fetch();
-    const channelName = `${factionName} | 0`.toLowerCase();
-    const categories = [
-      "public chat",
-      "public voice",
-      "private chat",
-      "private voice",
-    ];
+    const channelName = normalize(buildChannelName(factionName));
 
     const channelsToDelete = channels.filter(
       (channel) =>
         channel &&
         channel.parent &&
-        categories.includes(channel.parent.name.toLowerCase()) &&
-        channel.name.toLowerCase() === channelName
+        CATEGORY_NAMES.includes(normalize(channel.parent.name)) &&
+        normalize(channel.name) === channelName
     );
 
     for (const channel of channelsToDelete.values()) {
@@ -337,9 +334,9 @@ await botClient.createSlashCommand(
 
     const roles = await guild.roles.fetch();
     const roleNames = [
-      factionName.toLowerCase(),
-      `${factionName} | leader`.toLowerCase(),
-      `${factionName} | request`.toLowerCase(),
+      normalize(factionName),
+      normalize(buildLeaderRoleName(factionName)),
+      normalize(buildRequestRoleName(factionName)),
     ];
 
     const rolesToDelete = roles.filter((role) =>
