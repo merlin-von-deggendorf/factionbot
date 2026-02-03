@@ -133,8 +133,8 @@ const updatePublicVoiceCounters = async (guild, counts) => {
     const faction = parsePublicVoiceFaction(channel.name);
     if (!faction) continue;
     const entry = counts.get(faction);
-    const activeCount = entry ? entry.member + entry.leader : 0;
-    const desiredName = `${faction} | ${activeCount}`;
+    const totalCount = entry ? entry.total : 0;
+    const desiredName = `${faction} | ${totalCount}`;
     if (channel.name !== desiredName) {
       updates.push(
         channel.setName(desiredName).catch((error) => {
