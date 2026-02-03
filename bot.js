@@ -24,6 +24,7 @@ class BotClient {
     this.token = process.env.DISCORD_TOKEN;
     this.commands = new Map();
     this.autocompleteHandlers = new Map();
+    this.commandDefinitions = new Map();
     this.readyPromise = new Promise((resolve) => {
       this.client.once("clientReady", () => resolve());
     });
@@ -91,35 +92,68 @@ class BotClient {
   ) {
     const commandName = name.toLowerCase();
     this.commands.set(commandName, behaviour);
-    await this.readyPromise;
-
-    const payload = { name: commandName, description, options };
-
-    if (scope === "global" || scope === "both") {
-      const existing = await this.client.application.commands.fetch();
-      const match = existing.find((cmd) => cmd.name === commandName);
-      if (match) {
-        await this.client.application.commands.edit(match.id, payload);
-      } else {
-        await this.client.application.commands.create(payload);
-      }
-    }
-
-    if (scope === "guild" || scope === "both") {
-      for (const guild of this.client.guilds.cache.values()) {
-        const existing = await guild.commands.fetch();
-        const match = existing.find((cmd) => cmd.name === commandName);
-        if (match) {
-          await guild.commands.edit(match.id, payload);
-        } else {
-          await guild.commands.create(payload);
-        }
-      }
-    }
+    this.commandDefinitions.set(commandName, {
+      name: commandName,
+      description,
+      options,
+      scope,
+    });
   }
 
   setAutocomplete(commandName, handler) {
     this.autocompleteHandlers.set(commandName.toLowerCase(), handler);
+  }
+
+  async syncCommands() {
+    await this.readyPromise;
+
+    const globals = [];
+    const guilds = [];
+
+    for (const def of this.commandDefinitions.values()) {
+      if (def.scope === "global" || def.scope === "both") {
+        globals.push(def);
+      }
+      if (def.scope === "guild" || def.scope === "both") {
+        guilds.push(def);
+      }
+    }
+
+    if (globals.length > 0) {
+      const existing = await this.client.application.commands.fetch();
+      for (const def of globals) {
+        const payload = {
+          name: def.name,
+          description: def.description,
+          options: def.options,
+        };
+        const match = existing.find((cmd) => cmd.name === def.name);
+        if (match) {
+          await this.client.application.commands.edit(match.id, payload);
+        } else {
+          await this.client.application.commands.create(payload);
+        }
+      }
+    }
+
+    if (guilds.length > 0) {
+      for (const guild of this.client.guilds.cache.values()) {
+        const existing = await guild.commands.fetch();
+        for (const def of guilds) {
+          const payload = {
+            name: def.name,
+            description: def.description,
+            options: def.options,
+          };
+          const match = existing.find((cmd) => cmd.name === def.name);
+          if (match) {
+            await guild.commands.edit(match.id, payload);
+          } else {
+            await guild.commands.create(payload);
+          }
+        }
+      }
+    }
   }
 
   async ensureCategories(guild, categoryNames) {

@@ -1176,3 +1176,5 @@ await botClient.createSlashCommand(
     },
   ]
 );
+
+await botClient.syncCommands();
