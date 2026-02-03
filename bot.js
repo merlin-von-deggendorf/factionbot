@@ -1,22 +1,31 @@
 import { Client, GatewayIntentBits } from "discord.js";
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
-});
+class BotClient {
+  constructor() {
+    this.client = new Client({
+      intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+      ],
+    });
+    this.token = process.env.DISCORD_TOKEN;
+  }
 
-const token = process.env.DISCORD_TOKEN;
-if (!token) {
-  console.error("Missing DISCORD_TOKEN in environment.");
-  process.exit(1);
+  async connect() {
+    if (!this.token) {
+      console.error("Missing DISCORD_TOKEN in environment.");
+      process.exit(1);
+    }
+    await this.client.login(this.token);
+    return this.client;
+  }
+
+  getClient() {
+    return this.client;
+  }
 }
 
-client.login(token).catch((error) => {
-  console.error("Discord login error:", error);
-  process.exit(1);
-});
+const botClient = new BotClient();
 
-export default client;
+export default botClient;

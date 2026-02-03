@@ -1,60 +1,51 @@
 import { MongoClient } from "mongodb";
 
-const mongoUri = process.env.MONGODB_URI;
-const mongoDbName = process.env.MONGODB_DB ?? "factionbot";
-if (!mongoUri) {
-  console.error("Missing MONGODB_URI in environment.");
-  process.exit(1);
-}
+class DbClient {
+  constructor() {
+    this.mongoUri = process.env.MONGODB_URI;
+    this.mongoDbName = process.env.MONGODB_DB ?? "factionbot";
+    if (!this.mongoUri) {
+      console.error("Missing MONGODB_URI in environment.");
+      process.exit(1);
+    }
 
-const mongo = new MongoClient(mongoUri, {
-  serverSelectionTimeoutMS: 5000,
-});
-
-const db = mongo.db(mongoDbName);
-const connectPromise = mongo
-  .connect()
-  .then(async () => {
-    await db.command({ ping: 1 });
-    console.log(`MongoDB connected: ${db.databaseName}`);
-    return db;
-  })
-  .catch((error) => {
-    console.error("MongoDB connection error:", error);
-    process.exit(1);
-  });
-
-const shutdown = async () => {
-  try {
-    await mongo.close();
-    console.log("MongoDB disconnected.");
-  } catch (error) {
-    console.error("MongoDB disconnect error:", error);
-  } finally {
-    process.exit(0);
+    this.mongo = new MongoClient(this.mongoUri, {
+      serverSelectionTimeoutMS: 5000,
+    });
+    this.db = null;
   }
-};
 
-process.on("SIGINT", shutdown);
-process.on("SIGTERM", shutdown);
+  async connect() {
+    await this.mongo.connect();
+    this.db = this.mongo.db(this.mongoDbName);
+    await this.db.command({ ping: 1 });
+    console.log(`MongoDB connected: ${this.db.databaseName}`);
+    return this.db;
+  }
 
-export async function storeMessage(message) {
-  await connectPromise;
-  const doc = {
-    messageId: message?.id ?? message?.messageId ?? null,
-    content: message?.content ?? message?.text ?? "",
-    authorId: message?.author?.id ?? message?.authorId ?? null,
-    authorTag: message?.author?.tag ?? message?.authorTag ?? null,
-    guildId: message?.guild?.id ?? message?.guildId ?? null,
-    channelId: message?.channel?.id ?? message?.channelId ?? null,
-    createdAt: message?.createdTimestamp
-      ? new Date(message.createdTimestamp)
-      : message?.createdAt
-        ? new Date(message.createdAt)
-        : new Date(),
-  };
+  getDb() {
+    return this.db;
+  }
 
-  return db.collection("messages").insertOne(doc);
+  async storeMessage(message) {
+    const doc = {
+      messageId: message?.id ?? message?.messageId ?? null,
+      content: message?.content ?? message?.text ?? "",
+      authorId: message?.author?.id ?? message?.authorId ?? null,
+      authorTag: message?.author?.tag ?? message?.authorTag ?? null,
+      guildId: message?.guild?.id ?? message?.guildId ?? null,
+      channelId: message?.channel?.id ?? message?.channelId ?? null,
+      createdAt: message?.createdTimestamp
+        ? new Date(message.createdTimestamp)
+        : message?.createdAt
+          ? new Date(message.createdAt)
+          : new Date(),
+    };
+
+    return this.db.collection("messages").insertOne(doc);
+  }
 }
 
-export default db;
+const dbClient = new DbClient();
+
+export default dbClient;

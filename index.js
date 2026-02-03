@@ -1,6 +1,12 @@
 import "dotenv/config";
-import client from "./bot.js";
-import db from "./db.js";
+import botClient from "./bot.js";
+import dbClient from "./db.js";
+
+await dbClient.connect();
+await botClient.connect();
+
+const client = botClient.getClient();
+const db = dbClient.getDb();
 
 client.once("clientReady", () => {
   console.log(`Logged in as ${client.user.tag}`);
