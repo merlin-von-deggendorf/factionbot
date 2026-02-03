@@ -5,6 +5,7 @@ import {
   ButtonStyle,
   MessageFlags,
   ApplicationCommandOptionType,
+  ChannelType,
   PermissionsBitField,
 } from "discord.js";
 import dbClient from "./db.js";
@@ -70,8 +71,22 @@ await botClient.createSlashCommand(
       return;
     }
 
+    const guild = interaction.guild;
+    if (!guild) {
+      await interaction.reply({
+        content: "This command must be run in a server.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const category = await guild.channels.create({
+      name: "faction public chats",
+      type: ChannelType.GuildCategory,
+    });
+
     await interaction.reply({
-      content: "Setting up...",
+      content: `Setting up... Created category: ${category.name}`,
       flags: MessageFlags.Ephemeral,
     });
   },
