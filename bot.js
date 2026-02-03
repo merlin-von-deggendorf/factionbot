@@ -14,13 +14,9 @@ if (!token) {
   process.exit(1);
 }
 
-queueMicrotask(async () => {
-  try {
-    await client.login(token);
-  } catch (error) {
-    console.error("Discord login error:", error);
-    process.exit(1);
-  }
+client.login(token).catch((error) => {
+  console.error("Discord login error:", error);
+  process.exit(1);
 });
 
 export default client;

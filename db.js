@@ -3,17 +3,26 @@ import { MongoClient } from "mongodb";
 const mongoUri = process.env.MONGODB_URI;
 const mongoDbName = process.env.MONGODB_DB ?? "factionbot";
 if (!mongoUri) {
-  throw new Error("Missing MONGODB_URI in environment.");
+  console.error("Missing MONGODB_URI in environment.");
+  process.exit(1);
 }
 
 const mongo = new MongoClient(mongoUri, {
   serverSelectionTimeoutMS: 5000,
 });
 
-await mongo.connect();
 const db = mongo.db(mongoDbName);
-await db.command({ ping: 1 });
-console.log(`MongoDB connected: ${db.databaseName}`);
+const connectPromise = mongo
+  .connect()
+  .then(async () => {
+    await db.command({ ping: 1 });
+    console.log(`MongoDB connected: ${db.databaseName}`);
+    return db;
+  })
+  .catch((error) => {
+    console.error("MongoDB connection error:", error);
+    process.exit(1);
+  });
 
 const shutdown = async () => {
   try {
@@ -30,6 +39,7 @@ process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
 export async function storeMessage(message) {
+  await connectPromise;
   const doc = {
     messageId: message?.id ?? message?.messageId ?? null,
     content: message?.content ?? message?.text ?? "",

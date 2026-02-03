@@ -12,4 +12,3 @@ client.on("messageCreate", async (message) => {
     message.channel.send("Hello world!");
   }
 });
-
