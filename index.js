@@ -666,6 +666,209 @@ await botClient.createSlashCommand(
   ]
 );
 
+await botClient.createSlashCommand(
+  "removeleader",
+  async (interaction) => {
+    const canManage =
+      interaction.memberPermissions?.has(
+        PermissionsBitField.Flags.ManageGuild
+      ) ?? false;
+
+    if (!canManage) {
+      await interaction.reply({
+        content: "You need Manage Server permission to run this.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const factionName = interaction.options.getString("faction", true);
+    const member =
+      interaction.options.getMember("member") ??
+      (await interaction.guild?.members.fetch(
+        interaction.options.getUser("member", true).id
+      ));
+
+    if (!interaction.guild || !member) {
+      await interaction.reply({
+        content: "Member not found.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const roles = await interaction.guild.roles.fetch();
+    const targetRoleName = normalize(buildLeaderRoleName(factionName));
+    const role = roles.find(
+      (r) => normalize(r.name) === targetRoleName
+    );
+
+    if (!role) {
+      await interaction.reply({
+        content: "Leader role not found for that faction.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    if (!member.roles.cache.has(role.id)) {
+      await interaction.reply({
+        content: "That member does not have the leader role.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    try {
+      await member.roles.remove(role);
+      await interaction.reply({
+        content: `Removed ${role.name} from ${member.user.tag}.`,
+        flags: MessageFlags.Ephemeral,
+      });
+    } catch (error) {
+      await interaction.reply({
+        content:
+          "I don't have permission to modify roles. Check my role hierarchy and Manage Roles permission.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+  },
+  "Remove leader role from a member",
+  "guild",
+  [
+    {
+      name: "faction",
+      description: "Faction name",
+      type: ApplicationCommandOptionType.String,
+      required: true,
+      autocomplete: true,
+    },
+    {
+      name: "member",
+      description: "Server member",
+      type: ApplicationCommandOptionType.User,
+      required: true,
+    },
+  ]
+);
+
+botClient.setAutocomplete("removeleader", async (interaction) => {
+  const guild = interaction.guild;
+  if (!guild) {
+    await interaction.respond([]);
+    return;
+  }
+
+  const focused = normalize(interaction.options.getFocused() ?? "");
+  const roles = await guild.roles.fetch();
+  const factions = new Set();
+
+  for (const role of roles.values()) {
+    const name = role.name;
+    const lower = normalize(name);
+    if (lower.endsWith(MEMBER_SUFFIX)) {
+      const faction = name.slice(0, name.length - MEMBER_SUFFIX.length);
+      factions.add(faction);
+    }
+  }
+
+  const choices = Array.from(factions)
+    .filter((name) => normalize(name).includes(focused))
+    .slice(0, 25)
+    .map((name) => ({ name, value: name }));
+
+  await interaction.respond(choices);
+});
+
+await botClient.createSlashCommand(
+  "removemember",
+  async (interaction) => {
+    const member =
+      interaction.options.getMember("member") ??
+      (await interaction.guild?.members.fetch(
+        interaction.options.getUser("member", true).id
+      ));
+
+    if (!interaction.guild || !member) {
+      await interaction.reply({
+        content: "Member not found.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const leaderFactions = interaction.member.roles.cache
+      .filter((role) => normalize(role.name).endsWith(LEADER_SUFFIX))
+      .map((role) => getFactionFromRoleName(role.name))
+      .filter(Boolean);
+
+    if (leaderFactions.length === 0) {
+      await interaction.reply({
+        content: "Only faction leaders can remove members.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const uniqueFactions = Array.from(new Set(leaderFactions));
+    if (uniqueFactions.length !== 1) {
+      await interaction.reply({
+        content:
+          "You lead multiple factions. Ask an admin to remove members.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const factionName = uniqueFactions[0];
+    const roles = await interaction.guild.roles.fetch();
+    const memberRoleName = normalize(buildMemberRoleName(factionName));
+    const memberRole = roles.find(
+      (role) => normalize(role.name) === memberRoleName
+    );
+
+    if (!memberRole) {
+      await interaction.reply({
+        content: "Member role not found for your faction.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    if (!member.roles.cache.has(memberRole.id)) {
+      await interaction.reply({
+        content: "That user is not a member of your faction.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    try {
+      await member.roles.remove(memberRole);
+      await interaction.reply({
+        content: `Removed ${member.user.tag} from ${factionName}.`,
+        flags: MessageFlags.Ephemeral,
+      });
+    } catch (error) {
+      await interaction.reply({
+        content:
+          "I don't have permission to modify roles. Check my role hierarchy and Manage Roles permission.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
+  },
+  "Remove a member from your faction",
+  "guild",
+  [
+    {
+      name: "member",
+      description: "Server member",
+      type: ApplicationCommandOptionType.User,
+      required: true,
+    },
+  ]
+);
+
 botClient.setAutocomplete("delete", async (interaction) => {
   const guild = interaction.guild;
   if (!guild) {
@@ -699,7 +902,7 @@ await botClient.createSlashCommand(
   async (interaction) => {
     await interaction.reply({
       content:
-        "Commands: /setup, /createfaction, /joinfaction, /leavefaction, /approverequest, /delete, /addleader, /countfactions",
+        "Commands: /setup, /createfaction, /joinfaction, /leavefaction, /approverequest, /delete, /addleader, /removeleader, /removemember, /countfactions",
       flags: MessageFlags.Ephemeral,
     });
   },
