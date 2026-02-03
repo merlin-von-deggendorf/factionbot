@@ -913,35 +913,49 @@ await botClient.createSlashCommand(
 await botClient.createSlashCommand(
   "resync",
   async (interaction) => {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    try {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    const guild = interaction.guild;
-    if (!guild) {
+      const guild = interaction.guild;
+      if (!guild) {
+        await interaction.editReply({
+          content: "This command must be run in a server.",
+        });
+        return;
+      }
+
+      const roles = await guild.roles.fetch();
+      const factions = new Set();
+
+      for (const role of roles.values()) {
+        const faction = getFactionFromRoleName(role.name);
+        if (faction) factions.add(faction);
+      }
+
+      if (factions.size === 0) {
+        await interaction.editReply({
+          content: "No factions found to resync.",
+        });
+        return;
+      }
+
+      await updateCountsForFactions(guild, factions);
       await interaction.editReply({
-        content: "This command must be run in a server.",
+        content: "Faction counters resynced.",
       });
-      return;
+    } catch (error) {
+      console.error("Resync failed:", error);
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply({
+          content: "Resync failed. Check bot permissions and try again.",
+        });
+      } else {
+        await interaction.reply({
+          content: "Resync failed. Check bot permissions and try again.",
+          flags: MessageFlags.Ephemeral,
+        });
+      }
     }
-
-    const roles = await guild.roles.fetch();
-    const factions = new Set();
-
-    for (const role of roles.values()) {
-      const faction = getFactionFromRoleName(role.name);
-      if (faction) factions.add(faction);
-    }
-
-    if (factions.size === 0) {
-      await interaction.editReply({
-        content: "No factions found to resync.",
-      });
-      return;
-    }
-
-    await updateCountsForFactions(guild, factions);
-    await interaction.editReply({
-      content: "Faction counters resynced.",
-    });
   },
   "Resync faction counters",
   "guild"
