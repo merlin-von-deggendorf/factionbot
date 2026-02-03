@@ -119,18 +119,27 @@ class BotClient {
 
     const globals = [];
     const guilds = [];
+    const globalNames = new Set();
+    const guildNames = new Set();
 
     for (const def of this.commandDefinitions.values()) {
       if (def.scope === "global" || def.scope === "both") {
         globals.push(def);
+        globalNames.add(def.name);
       }
       if (def.scope === "guild" || def.scope === "both") {
         guilds.push(def);
+        guildNames.add(def.name);
       }
     }
 
     if (globals.length > 0) {
       const existing = await this.client.application.commands.fetch();
+      for (const cmd of existing.values()) {
+        if (!globalNames.has(cmd.name)) {
+          await this.client.application.commands.delete(cmd.id);
+        }
+      }
       for (const def of globals) {
         const payload = {
           name: def.name,
@@ -149,6 +158,11 @@ class BotClient {
     if (guilds.length > 0) {
       for (const guild of this.client.guilds.cache.values()) {
         const existing = await guild.commands.fetch();
+        for (const cmd of existing.values()) {
+          if (!guildNames.has(cmd.name)) {
+            await guild.commands.delete(cmd.id);
+          }
+        }
         for (const def of guilds) {
           const payload = {
             name: def.name,
