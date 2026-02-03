@@ -5,6 +5,7 @@ import {
   ButtonStyle,
   MessageFlags,
   ApplicationCommandOptionType,
+  PermissionsBitField,
 } from "discord.js";
 import dbClient from "./db.js";
 import botClient from "./bot.js";
@@ -51,6 +52,30 @@ await botClient.createSlashCommand(
       required: true,
     },
   ]
+);
+
+await botClient.createSlashCommand(
+  "setup",
+  async (interaction) => {
+    const canManage =
+      interaction.memberPermissions?.has(
+        PermissionsBitField.Flags.ManageGuild
+      ) ?? false;
+
+    if (!canManage) {
+      await interaction.reply({
+        content: "You need Manage Server permission to run this.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    await interaction.reply({
+      content: "Setting up...",
+      flags: MessageFlags.Ephemeral,
+    });
+  },
+  "Setup the bot"
 );
 
 client.on("interactionCreate", async (interaction) => {
