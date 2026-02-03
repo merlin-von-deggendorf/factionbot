@@ -569,6 +569,230 @@ await botClient.createSlashCommand(
 );
 
 await botClient.createSlashCommand(
+  "setleader",
+  async (interaction) => {
+    const canManage =
+      interaction.memberPermissions?.has(
+        PermissionsBitField.Flags.ManageGuild
+      ) ?? false;
+
+    if (!canManage) {
+      await interaction.reply({
+        content: "You need Manage Server permission to run this.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const factionName = interaction.options.getString("faction", true);
+    const member =
+      interaction.options.getMember("member") ??
+      (await interaction.guild?.members.fetch(
+        interaction.options.getUser("member", true).id
+      ));
+
+    if (!interaction.guild || !member) {
+      await interaction.reply({
+        content: "Member not found.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const hasFactionRole = member.roles.cache.some((role) =>
+      isFactionRoleName(role.name)
+    );
+
+    if (hasFactionRole) {
+      await interaction.reply({
+        content:
+          "That user is already in a faction. Ask them to run /leavefaction first.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const roles = await interaction.guild.roles.fetch();
+    const leaderRoleName = normalize(buildLeaderRoleName(factionName));
+    const leaderRole = roles.find(
+      (role) => normalize(role.name) === leaderRoleName
+    );
+
+    if (!leaderRole) {
+      await interaction.reply({
+        content: "Leader role not found for that faction.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    await member.roles.add(leaderRole);
+    await interaction.reply({
+      content: `Added ${leaderRole.name} to ${member.user.tag}.`,
+      flags: MessageFlags.Ephemeral,
+    });
+    await updateFactionCount(interaction.guild, factionName);
+  },
+  "Set a faction leader",
+  "guild",
+  [
+    {
+      name: "faction",
+      description: "Faction name",
+      type: ApplicationCommandOptionType.String,
+      required: true,
+      autocomplete: true,
+    },
+    {
+      name: "member",
+      description: "Server member",
+      type: ApplicationCommandOptionType.User,
+      required: true,
+    },
+  ]
+);
+
+botClient.setAutocomplete("setleader", async (interaction) => {
+  const guild = interaction.guild;
+  if (!guild) {
+    await interaction.respond([]);
+    return;
+  }
+
+  const focused = normalize(interaction.options.getFocused() ?? "");
+  const roles = await guild.roles.fetch();
+  const factions = new Set();
+
+  for (const role of roles.values()) {
+    const name = role.name;
+    const lower = normalize(name);
+    if (lower.endsWith(MEMBER_SUFFIX)) {
+      const faction = name.slice(0, name.length - MEMBER_SUFFIX.length);
+      factions.add(faction);
+    }
+  }
+
+  const choices = Array.from(factions)
+    .filter((name) => normalize(name).includes(focused))
+    .slice(0, 25)
+    .map((name) => ({ name, value: name }));
+
+  await interaction.respond(choices);
+});
+
+await botClient.createSlashCommand(
+  "approverequest",
+  async (interaction) => {
+    const factionName = interaction.options.getString("faction", true);
+    const member =
+      interaction.options.getMember("member") ??
+      (await interaction.guild?.members.fetch(
+        interaction.options.getUser("member", true).id
+      ));
+
+    if (!interaction.guild || !member) {
+      await interaction.reply({
+        content: "Member not found.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const leaderRoleName = normalize(buildLeaderRoleName(factionName));
+    const isLeader = interaction.member.roles.cache.some(
+      (role) => normalize(role.name) === leaderRoleName
+    );
+
+    if (!isLeader) {
+      await interaction.reply({
+        content: "Only faction leaders can approve requests.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const roles = await interaction.guild.roles.fetch();
+    const requestRoleName = normalize(buildRequestRoleName(factionName));
+    const memberRoleName = normalize(buildMemberRoleName(factionName));
+    const requestRole = roles.find(
+      (role) => normalize(role.name) === requestRoleName
+    );
+    const memberRole = roles.find(
+      (role) => normalize(role.name) === memberRoleName
+    );
+
+    if (!requestRole || !memberRole) {
+      await interaction.reply({
+        content: "Faction roles not found for that faction.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    if (!member.roles.cache.has(requestRole.id)) {
+      await interaction.reply({
+        content: "That user does not have a request role for this faction.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    await member.roles.remove(requestRole);
+    await member.roles.add(memberRole);
+    await interaction.reply({
+      content: `Approved ${member.user.tag} for ${factionName}.`,
+      flags: MessageFlags.Ephemeral,
+    });
+    await updateFactionCount(interaction.guild, factionName);
+  },
+  "Approve a faction join request",
+  "guild",
+  [
+    {
+      name: "faction",
+      description: "Faction name",
+      type: ApplicationCommandOptionType.String,
+      required: true,
+      autocomplete: true,
+    },
+    {
+      name: "member",
+      description: "Server member",
+      type: ApplicationCommandOptionType.User,
+      required: true,
+    },
+  ]
+);
+
+botClient.setAutocomplete("approverequest", async (interaction) => {
+  const guild = interaction.guild;
+  if (!guild) {
+    await interaction.respond([]);
+    return;
+  }
+
+  const focused = normalize(interaction.options.getFocused() ?? "");
+  const roles = await guild.roles.fetch();
+  const factions = new Set();
+
+  for (const role of roles.values()) {
+    const name = role.name;
+    const lower = normalize(name);
+    if (lower.endsWith(MEMBER_SUFFIX)) {
+      const faction = name.slice(0, name.length - MEMBER_SUFFIX.length);
+      factions.add(faction);
+    }
+  }
+
+  const choices = Array.from(factions)
+    .filter((name) => normalize(name).includes(focused))
+    .slice(0, 25)
+    .map((name) => ({ name, value: name }));
+
+  await interaction.respond(choices);
+});
+
+await botClient.createSlashCommand(
   "delete",
   async (interaction) => {
     const canManage =
