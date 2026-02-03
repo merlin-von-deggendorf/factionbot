@@ -1000,9 +1000,13 @@ await botClient.createSlashCommand(
     let counts;
     let usedCacheOnly = false;
     try {
-      counts = await countFactionRoles(guild);
+      const fullCountPromise = countFactionRoles(guild);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("COUNT_TIMEOUT")), 6000)
+      );
+      counts = await Promise.race([fullCountPromise, timeoutPromise]);
     } catch (error) {
-      if (error?.name === "GatewayRateLimitError") {
+      if (error?.name === "GatewayRateLimitError" || error?.message === "COUNT_TIMEOUT") {
         counts = await countFactionRolesFromCache(guild);
         usedCacheOnly = true;
       } else {
@@ -1023,14 +1027,14 @@ await botClient.createSlashCommand(
       );
     }
 
-    await updatePublicVoiceCounters(guild, counts);
-
     await interaction.editReply({
       content: usedCacheOnly
-        ? `Rate limited by Discord; showing cached counts only.\n${lines.join(
-            "\n"
-          )}`
+        ? `Using cached counts only.\n${lines.join("\n")}`
         : lines.join("\n"),
+    });
+
+    updatePublicVoiceCounters(guild, counts).catch((error) => {
+      console.error("Failed to update public voice counters:", error);
     });
   },
   "Count faction roles",
