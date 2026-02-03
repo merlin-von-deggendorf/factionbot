@@ -12,12 +12,19 @@ client.once("clientReady", () => {
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
   if (message.content.toLowerCase() === "hello") {
-    message.channel.send("Hello worlds!");
+    message.channel.send("Hello worldsssss!");
   }
 });
 
 await botClient.connect();
 await botClient.createSlashCommand("help", async (interaction) => {
+  await interaction.reply({
+    content: "Commands: /help",
+    ephemeral: true,
+  });
+});
+await botClient.connect();
+await botClient.createSlashCommand("help2", async (interaction) => {
   await interaction.reply({
     content: "Commands: /help",
     ephemeral: true,
