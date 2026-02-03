@@ -50,104 +50,45 @@ const getFactionFromRoleName = (name) => {
   return null;
 };
 
-const updateFactionCount = async (guild, factionName) => {
+const countFactionRoles = async (guild) => {
   const roles = await guild.roles.fetch();
-  const memberRole = roles.find(
-    (r) => normalize(r.name) === normalize(buildMemberRoleName(factionName))
-  );
-  const leaderRole = roles.find(
-    (r) => normalize(r.name) === normalize(buildLeaderRoleName(factionName))
-  );
-  const requestRole = roles.find(
-    (r) => normalize(r.name) === normalize(buildRequestRoleName(factionName))
-  );
+  const factions = new Map();
 
-  const roleIds = [memberRole, leaderRole, requestRole]
-    .filter(Boolean)
-    .map((role) => role.id);
-
-  if (roleIds.length === 0) return;
-
-  const members = await guild.members.fetch();
-  let count = 0;
-  for (const member of members.values()) {
-    if (roleIds.some((id) => member.roles.cache.has(id))) {
-      count += 1;
+  for (const role of roles.values()) {
+    const faction = getFactionFromRoleName(role.name);
+    if (!faction) continue;
+    if (!factions.has(faction)) {
+      factions.set(faction, { member: 0, leader: 0, request: 0, total: 0 });
     }
   }
 
-  const channels = await guild.channels.fetch();
-  const publicVoice = channels.find(
-    (channel) =>
-      channel?.type === ChannelType.GuildCategory &&
-      normalize(channel.name) === "public voice"
-  );
-
-  if (!publicVoice) return;
-
-  const target = channels.find((channel) => {
-    if (!channel || channel.type !== ChannelType.GuildVoice) return false;
-    if (!channel.parent || channel.parent.id !== publicVoice.id) return false;
-    return normalize(channel.name).startsWith(
-      `${normalize(factionName)} |`
-    );
-  });
-
-  if (!target) return;
-
-  const desiredName = `${factionName} | ${count}`;
-  if (target.name !== desiredName) {
-    await target.edit({ name: desiredName });
+  const members = await guild.members.fetch();
+  for (const member of members.values()) {
+    for (const role of member.roles.cache.values()) {
+      const faction = getFactionFromRoleName(role.name);
+      if (!faction) continue;
+      const entry = factions.get(faction);
+      if (!entry) continue;
+      const lower = normalize(role.name);
+      if (lower.endsWith(MEMBER_SUFFIX)) entry.member += 1;
+      else if (lower.endsWith(LEADER_SUFFIX)) entry.leader += 1;
+      else if (lower.endsWith(REQUEST_SUFFIX)) entry.request += 1;
+      entry.total += 1;
+    }
   }
-};
 
-const updateCountsForFactions = async (guild, factionNames) => {
-  for (const name of factionNames) {
-    await updateFactionCount(guild, name);
-  }
+  return factions;
 };
 
 client.once("clientReady", () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
 
-client.once("clientReady", async () => {
-  try {
-    const guilds = client.guilds.cache.values();
-    for (const guild of guilds) {
-      const roles = await guild.roles.fetch();
-      const factions = new Set();
-
-      for (const role of roles.values()) {
-        const faction = getFactionFromRoleName(role.name);
-        if (faction) factions.add(faction);
-      }
-
-      if (factions.size > 0) {
-        await updateCountsForFactions(guild, factions);
-      }
-    }
-  } catch (error) {
-    console.error("Failed to refresh faction counters:", error);
-  }
-});
 
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
   if (message.content.toLowerCase() === "hello") {
     message.channel.send("Hello worldsssss!");
-  }
-});
-
-client.on("guildMemberRemove", async (member) => {
-  const factions = new Set();
-  for (const role of member.roles.cache.values()) {
-    const faction = getFactionFromRoleName(role.name);
-    if (faction) factions.add(faction);
-  }
-
-  if (factions.size > 0) {
-    await updateCountsForFactions(member.guild, factions);
   }
 });
 
@@ -165,27 +106,20 @@ client.on("guildMemberUpdate", async (oldMember, newMember) => {
 
   if (addedRoles.size > 0) {
     const keepRole = addedRoles.first();
-    const toRemove = newFactionRoles.filter(
-      (role) => role.id !== keepRole.id
-    );
+    const keepName = normalize(keepRole.name);
+    const toRemove = newFactionRoles.filter((role) => {
+      if (role.id === keepRole.id) return false;
+      const name = normalize(role.name);
+      const keepIsRequest = keepName.endsWith(REQUEST_SUFFIX);
+      const roleIsRequest = name.endsWith(REQUEST_SUFFIX);
+      if (keepIsRequest || roleIsRequest) return false;
+      return true;
+    });
     if (toRemove.size > 0) {
       await newMember.roles.remove(toRemove);
     }
   }
 
-  const affectedFactions = new Set();
-  for (const role of oldFactionRoles.values()) {
-    const faction = getFactionFromRoleName(role.name);
-    if (faction) affectedFactions.add(faction);
-  }
-  for (const role of newFactionRoles.values()) {
-    const faction = getFactionFromRoleName(role.name);
-    if (faction) affectedFactions.add(faction);
-  }
-
-  if (affectedFactions.size > 0) {
-    await updateCountsForFactions(newMember.guild, affectedFactions);
-  }
 });
 
 await botClient.connect();
@@ -322,9 +256,6 @@ await botClient.createSlashCommand(
         parent: categories["private voice"].id,
       });
     }
-    if (guild) {
-      await updateFactionCount(guild, factionName);
-    }
     await interaction.editReply({
       content: `Create faction: ${factionName}`,
     });
@@ -430,14 +361,12 @@ await botClient.createSlashCommand(
       return;
     }
 
-    await member.roles.add(role);
     try {
       await member.roles.add(role);
       await interaction.reply({
         content: `Added ${role.name} to ${member.user.tag}.`,
         flags: MessageFlags.Ephemeral,
       });
-      await updateFactionCount(interaction.guild, factionName);
     } catch (error) {
       await interaction.reply({
         content:
@@ -523,7 +452,6 @@ await botClient.createSlashCommand(
         content: `Request sent for ${factionName}.`,
         flags: MessageFlags.Ephemeral,
       });
-      await updateFactionCount(guild, factionName);
     } catch (error) {
       await interaction.reply({
         content:
@@ -603,19 +531,12 @@ await botClient.createSlashCommand(
       return;
     }
 
-    const factionsToUpdate = new Set();
-    for (const role of rolesToRemove.values()) {
-      const faction = getFactionFromRoleName(role.name);
-      if (faction) factionsToUpdate.add(faction);
-    }
-
     try {
       await member.roles.remove(rolesToRemove);
       await interaction.reply({
         content: "You have left your faction.",
         flags: MessageFlags.Ephemeral,
       });
-      await updateCountsForFactions(guild, factionsToUpdate);
     } catch (error) {
       await interaction.reply({
         content:
@@ -686,14 +607,12 @@ await botClient.createSlashCommand(
       return;
     }
 
-    await member.roles.add(leaderRole);
     try {
       await member.roles.add(leaderRole);
       await interaction.reply({
         content: `Added ${leaderRole.name} to ${member.user.tag}.`,
         flags: MessageFlags.Ephemeral,
       });
-      await updateFactionCount(interaction.guild, factionName);
     } catch (error) {
       await interaction.reply({
         content:
@@ -813,7 +732,6 @@ await botClient.createSlashCommand(
         content: `Approved ${member.user.tag} for ${factionName}.`,
         flags: MessageFlags.Ephemeral,
       });
-      await updateFactionCount(interaction.guild, factionName);
     } catch (error) {
       await interaction.reply({
         content:
@@ -902,7 +820,7 @@ await botClient.createSlashCommand(
   async (interaction) => {
     await interaction.reply({
       content:
-        "Commands: /setup, /createfaction, /joinfaction, /leavefaction, /setleader, /approverequest, /delete, /addleader",
+        "Commands: /setup, /createfaction, /joinfaction, /leavefaction, /setleader, /approverequest, /delete, /addleader, /countfactions",
       flags: MessageFlags.Ephemeral,
     });
   },
@@ -911,53 +829,38 @@ await botClient.createSlashCommand(
 );
 
 await botClient.createSlashCommand(
-  "resync",
+  "countfactions",
   async (interaction) => {
-    try {
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-      const guild = interaction.guild;
-      if (!guild) {
-        await interaction.editReply({
-          content: "This command must be run in a server.",
-        });
-        return;
-      }
-
-      const roles = await guild.roles.fetch();
-      const factions = new Set();
-
-      for (const role of roles.values()) {
-        const faction = getFactionFromRoleName(role.name);
-        if (faction) factions.add(faction);
-      }
-
-      if (factions.size === 0) {
-        await interaction.editReply({
-          content: "No factions found to resync.",
-        });
-        return;
-      }
-
-      await updateCountsForFactions(guild, factions);
+    const guild = interaction.guild;
+    if (!guild) {
       await interaction.editReply({
-        content: "Faction counters resynced.",
+        content: "This command must be run in a server.",
       });
-    } catch (error) {
-      console.error("Resync failed:", error);
-      if (interaction.deferred || interaction.replied) {
-        await interaction.editReply({
-          content: "Resync failed. Check bot permissions and try again.",
-        });
-      } else {
-        await interaction.reply({
-          content: "Resync failed. Check bot permissions and try again.",
-          flags: MessageFlags.Ephemeral,
-        });
-      }
+      return;
     }
+
+    const counts = await countFactionRoles(guild);
+    if (counts.size === 0) {
+      await interaction.editReply({
+        content: "No faction roles found.",
+      });
+      return;
+    }
+
+    const lines = [];
+    for (const [faction, c] of counts.entries()) {
+      lines.push(
+        `${faction}: total ${c.total} (member ${c.member}, leader ${c.leader}, request ${c.request})`
+      );
+    }
+
+    await interaction.editReply({
+      content: lines.join("\n"),
+    });
   },
-  "Resync faction counters",
+  "Count faction roles",
   "guild"
 );
 
