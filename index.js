@@ -5,7 +5,6 @@ import {
   ChannelType,
   PermissionsBitField,
 } from "discord.js";
-import dbClient from "./db.js";
 import botClient from "./bot.js";
 
 const CATEGORY_NAMES = [
