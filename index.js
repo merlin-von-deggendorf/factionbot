@@ -103,6 +103,52 @@ const countFactionRolesFromCache = async (guild) => {
   return factions;
 };
 
+const parsePublicVoiceFaction = (name) => {
+  const separator = " | ";
+  const index = name.lastIndexOf(separator);
+  if (index === -1) return null;
+  const faction = name.slice(0, index).trim();
+  return faction.length > 0 ? faction : null;
+};
+
+const updatePublicVoiceCounters = async (guild, counts) => {
+  const channels = await guild.channels.fetch();
+  const publicVoiceCategory = channels.find(
+    (channel) =>
+      channel?.type === ChannelType.GuildCategory &&
+      normalize(channel.name) === "public voice"
+  );
+
+  if (!publicVoiceCategory) return;
+
+  const updates = [];
+  for (const channel of channels.values()) {
+    if (
+      !channel ||
+      channel.type !== ChannelType.GuildVoice ||
+      channel.parentId !== publicVoiceCategory.id
+    ) {
+      continue;
+    }
+    const faction = parsePublicVoiceFaction(channel.name);
+    if (!faction) continue;
+    const entry = counts.get(faction);
+    const activeCount = entry ? entry.member + entry.leader : 0;
+    const desiredName = `${faction} | ${activeCount}`;
+    if (channel.name !== desiredName) {
+      updates.push(
+        channel.setName(desiredName).catch((error) => {
+          console.error("Failed to update voice channel name:", error);
+        })
+      );
+    }
+  }
+
+  if (updates.length > 0) {
+    await Promise.all(updates);
+  }
+};
+
 client.once("clientReady", () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
@@ -976,6 +1022,8 @@ await botClient.createSlashCommand(
         `${faction}: total ${c.total} (member ${c.member}, leader ${c.leader}, request ${c.request})`
       );
     }
+
+    await updatePublicVoiceCounters(guild, counts);
 
     await interaction.editReply({
       content: usedCacheOnly
