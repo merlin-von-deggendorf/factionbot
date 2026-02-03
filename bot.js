@@ -26,5 +26,4 @@ class BotClient {
 }
 
 const botClient = new BotClient();
-await botClient.connect();
 export default botClient;

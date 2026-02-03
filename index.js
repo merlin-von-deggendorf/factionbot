@@ -14,3 +14,6 @@ client.on("messageCreate", async (message) => {
     message.channel.send("Hello worlds!");
   }
 });
+
+await dbClient.connect();
+await botClient.connect();

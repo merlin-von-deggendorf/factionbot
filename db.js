@@ -16,11 +16,27 @@ class DbClient {
   }
 
   async connect() {
-    await this.mongo.connect();
-    this.db = this.mongo.db(this.mongoDbName);
-    await this.db.command({ ping: 1 });
-    console.log(`MongoDB connected: ${this.db.databaseName}`);
-    return this.db;
+    if (this.db) return this.db;
+
+    const timeoutMs = 5000;
+    const timeout = new Promise((_, reject) => {
+      setTimeout(
+        () => reject(new Error(`MongoDB connection timed out after ${timeoutMs}ms`)),
+        timeoutMs
+      );
+    });
+
+    try {
+      console.log("Connecting to MongoDB...");
+      await Promise.race([this.mongo.connect(), timeout]);
+      this.db = this.mongo.db(this.mongoDbName);
+      await this.db.command({ ping: 1 });
+      console.log(`MongoDB connected: ${this.db.databaseName}`);
+      return this.db;
+    } catch (error) {
+      console.error("MongoDB connection error:", error);
+      process.exit(1);
+    }
   }
 
   getDb() {
