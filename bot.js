@@ -11,11 +11,21 @@ class BotClient {
     });
     this.token = process.env.DISCORD_TOKEN;
     this.commands = new Map();
+    this.autocompleteHandlers = new Map();
     this.readyPromise = new Promise((resolve) => {
       this.client.once("clientReady", () => resolve());
     });
 
     this.client.on("interactionCreate", async (interaction) => {
+      if (interaction.isAutocomplete()) {
+        const handler = this.autocompleteHandlers.get(
+          interaction.commandName.toLowerCase()
+        );
+        if (handler) {
+          await handler(interaction);
+        }
+        return;
+      }
       if (!interaction.isChatInputCommand()) return;
       const handler = this.commands.get(interaction.commandName);
       if (!handler) return;
@@ -42,14 +52,30 @@ class BotClient {
     const payload = { name: commandName, description, options };
 
     if (scope === "global" || scope === "both") {
-      await this.client.application.commands.create(payload);
+      const existing = await this.client.application.commands.fetch();
+      const match = existing.find((cmd) => cmd.name === commandName);
+      if (match) {
+        await this.client.application.commands.edit(match.id, payload);
+      } else {
+        await this.client.application.commands.create(payload);
+      }
     }
 
     if (scope === "guild" || scope === "both") {
       for (const guild of this.client.guilds.cache.values()) {
-        await guild.commands.create(payload);
+        const existing = await guild.commands.fetch();
+        const match = existing.find((cmd) => cmd.name === commandName);
+        if (match) {
+          await guild.commands.edit(match.id, payload);
+        } else {
+          await guild.commands.create(payload);
+        }
       }
     }
+  }
+
+  setAutocomplete(commandName, handler) {
+    this.autocompleteHandlers.set(commandName.toLowerCase(), handler);
   }
 
   async ensureCategories(guild, categoryNames) {

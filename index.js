@@ -21,6 +21,9 @@ const buildPublicVoiceChannelName = (factionName) => `${factionName} | 0`;
 const buildMemberRoleName = (factionName) => `${factionName} | member`;
 const buildLeaderRoleName = (factionName) => `${factionName} | leader`;
 const buildRequestRoleName = (factionName) => `${factionName} | request`;
+const MEMBER_SUFFIX = " | member";
+const LEADER_SUFFIX = " | leader";
+const REQUEST_SUFFIX = " | request";
 
 const client = botClient.getClient();
 
@@ -288,6 +291,146 @@ await botClient.createSlashCommand(
       required: true,
     },
   ]
+);
+
+await botClient.createSlashCommand(
+  "joinfaction",
+  async (interaction) => {
+    const factionName = interaction.options.getString("faction");
+    if (!factionName) {
+      await interaction.reply({
+        content: "Missing required option: faction.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const guild = interaction.guild;
+    if (!guild) {
+      await interaction.reply({
+        content: "This command must be run in a server.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const member = await guild.members.fetch(interaction.user.id);
+    const hasFactionRole = member.roles.cache.some((role) => {
+      const name = normalize(role.name);
+      return (
+        name.endsWith(MEMBER_SUFFIX) ||
+        name.endsWith(LEADER_SUFFIX) ||
+        name.endsWith(REQUEST_SUFFIX)
+      );
+    });
+
+    if (hasFactionRole) {
+      await interaction.reply({
+        content: "You can only be in one faction at a time.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const roles = await guild.roles.fetch();
+    const requestRoleName = normalize(buildRequestRoleName(factionName));
+    const requestRole = roles.find(
+      (role) => normalize(role.name) === requestRoleName
+    );
+
+    if (!requestRole) {
+      await interaction.reply({
+        content: "That faction does not exist.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    await member.roles.add(requestRole);
+    await interaction.reply({
+      content: `Request sent for ${factionName}.`,
+      flags: MessageFlags.Ephemeral,
+    });
+  },
+  "Join a faction",
+  "guild",
+  [
+    {
+      name: "faction",
+      description: "Faction name",
+      type: ApplicationCommandOptionType.String,
+      required: true,
+      autocomplete: true,
+    },
+  ]
+);
+
+botClient.setAutocomplete("joinfaction", async (interaction) => {
+  const guild = interaction.guild;
+  if (!guild) {
+    await interaction.respond([]);
+    return;
+  }
+
+  const focused = normalize(interaction.options.getFocused() ?? "");
+  const roles = await guild.roles.fetch();
+  const factions = new Set();
+
+  for (const role of roles.values()) {
+    const name = role.name;
+    const lower = normalize(name);
+    if (lower.endsWith(MEMBER_SUFFIX)) {
+      const faction = name.slice(0, name.length - MEMBER_SUFFIX.length);
+      factions.add(faction);
+    }
+  }
+
+  const choices = Array.from(factions)
+    .filter((name) => normalize(name).includes(focused))
+    .slice(0, 25)
+    .map((name) => ({ name, value: name }));
+
+  await interaction.respond(choices);
+});
+
+await botClient.createSlashCommand(
+  "leavefaction",
+  async (interaction) => {
+    const guild = interaction.guild;
+    if (!guild) {
+      await interaction.reply({
+        content: "This command must be run in a server.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const member = await guild.members.fetch(interaction.user.id);
+    const rolesToRemove = member.roles.cache.filter((role) => {
+      const name = normalize(role.name);
+      return (
+        name.endsWith(MEMBER_SUFFIX) ||
+        name.endsWith(LEADER_SUFFIX) ||
+        name.endsWith(REQUEST_SUFFIX)
+      );
+    });
+
+    if (rolesToRemove.size === 0) {
+      await interaction.reply({
+        content: "You are not in any faction.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    await member.roles.remove(rolesToRemove);
+    await interaction.reply({
+      content: "You have left your faction.",
+      flags: MessageFlags.Ephemeral,
+    });
+  },
+  "Leave your faction",
+  "guild"
 );
 
 await botClient.createSlashCommand(
