@@ -213,6 +213,75 @@ await botClient.createSlashCommand(
   "Setup the bot"
 );
 
+await botClient.createSlashCommand(
+  "addleader",
+  async (interaction) => {
+    const canManage =
+      interaction.memberPermissions?.has(
+        PermissionsBitField.Flags.ManageGuild
+      ) ?? false;
+
+    if (!canManage) {
+      await interaction.reply({
+        content: "You need Manage Server permission to run this.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const factionName = interaction.options.getString("faction", true);
+    const member =
+      interaction.options.getMember("member") ??
+      (await interaction.guild?.members.fetch(
+        interaction.options.getUser("member", true).id
+      ));
+
+    if (!interaction.guild || !member) {
+      await interaction.reply({
+        content: "Member not found.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const roles = await interaction.guild.roles.fetch();
+    const targetRoleName = `${factionName} | leader`.toLowerCase();
+    const role = roles.find(
+      (r) => r.name.toLowerCase() === targetRoleName
+    );
+
+    if (!role) {
+      await interaction.reply({
+        content: "Leader role not found for that faction.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    await member.roles.add(role);
+    await interaction.reply({
+      content: `Added ${role.name} to ${member.user.tag}.`,
+      flags: MessageFlags.Ephemeral,
+    });
+  },
+  "Add leader role to a member",
+  "guild",
+  [
+    {
+      name: "faction",
+      description: "Faction name",
+      type: ApplicationCommandOptionType.String,
+      required: true,
+    },
+    {
+      name: "member",
+      description: "Server member",
+      type: ApplicationCommandOptionType.User,
+      required: true,
+    },
+  ]
+);
+
 client.on("interactionCreate", async (interaction) => {
   if (interaction.isButton() && interaction.customId === "createFaction_ok") {
     const prefix = "Create faction: ";
