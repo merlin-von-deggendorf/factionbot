@@ -288,6 +288,85 @@ await botClient.createSlashCommand(
   ]
 );
 
+await botClient.createSlashCommand(
+  "delete",
+  async (interaction) => {
+    const canManage =
+      interaction.memberPermissions?.has(
+        PermissionsBitField.Flags.ManageGuild
+      ) ?? false;
+
+    if (!canManage) {
+      await interaction.reply({
+        content: "You need Manage Server permission to run this.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const factionName = interaction.options.getString("faction", true);
+    const guild = interaction.guild;
+    if (!guild) {
+      await interaction.reply({
+        content: "This command must be run in a server.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const channels = await guild.channels.fetch();
+    const channelName = `${factionName} | 0`.toLowerCase();
+    const categories = [
+      "public chat",
+      "public voice",
+      "private chat",
+      "private voice",
+    ];
+
+    const channelsToDelete = channels.filter(
+      (channel) =>
+        channel &&
+        channel.parent &&
+        categories.includes(channel.parent.name.toLowerCase()) &&
+        channel.name.toLowerCase() === channelName
+    );
+
+    for (const channel of channelsToDelete.values()) {
+      await channel.delete();
+    }
+
+    const roles = await guild.roles.fetch();
+    const roleNames = [
+      factionName.toLowerCase(),
+      `${factionName} | leader`.toLowerCase(),
+      `${factionName} | request`.toLowerCase(),
+    ];
+
+    const rolesToDelete = roles.filter((role) =>
+      roleNames.includes(role.name.toLowerCase())
+    );
+
+    for (const role of rolesToDelete.values()) {
+      await role.delete();
+    }
+
+    await interaction.reply({
+      content: "Faction channels and roles deleted (if they existed).",
+      flags: MessageFlags.Ephemeral,
+    });
+  },
+  "Delete a faction",
+  "guild",
+  [
+    {
+      name: "faction",
+      description: "Faction name",
+      type: ApplicationCommandOptionType.String,
+      required: true,
+    },
+  ]
+);
+
 client.on("interactionCreate", async (interaction) => {
   if (interaction.isButton() && interaction.customId === "createFaction_ok") {
     const prefix = "Create faction: ";
