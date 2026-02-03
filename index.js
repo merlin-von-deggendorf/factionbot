@@ -1,14 +1,15 @@
 import "dotenv/config";
-import { Client, GatewayIntentBits } from "discord.js";
-import { startBot } from "./bot.js";
-import { connectDb } from "./db.js";
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
+import client from "./bot.js";
+import db from "./db.js";
+
+client.once("clientReady", () => {
+  console.log(`Logged in as ${client.user.tag}`);
 });
 
-const db = await connectDb();
-await startBot(client, db);
+client.on("messageCreate", async (message) => {
+  if (message.author.bot) return;
+  if (message.content.toLowerCase() === "hello") {
+    message.channel.send("Hello world!");
+  }
+});
+
