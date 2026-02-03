@@ -155,6 +155,7 @@ class BotClient {
       }
     }
 
+    await this.client.guilds.fetch();
     for (const guild of this.client.guilds.cache.values()) {
       const existing = await guild.commands.fetch();
       for (const cmd of existing.values()) {
