@@ -32,7 +32,7 @@ class BotClient {
     name,
     behaviour,
     description = "Command",
-    scope = "both"
+    scope = "guild"
   ) {
     const commandName = name.toLowerCase();
     this.commands.set(commandName, behaviour);
