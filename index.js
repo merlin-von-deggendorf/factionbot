@@ -1,8 +1,5 @@
 import "dotenv/config";
 import {
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
   MessageFlags,
   ApplicationCommandOptionType,
   ChannelType,
@@ -164,16 +161,8 @@ await botClient.createSlashCommand(
         parent: categories["private voice"].id,
       });
     }
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId("createFaction_ok")
-        .setLabel("ok")
-        .setStyle(ButtonStyle.Primary)
-    );
-
     await interaction.editReply({
       content: `Create faction: ${factionName}`,
-      components: [row],
     });
   },
   "Create a faction",
@@ -317,12 +306,13 @@ await botClient.createSlashCommand(
       return;
     }
 
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
     const factionName = interaction.options.getString("faction", true);
     const guild = interaction.guild;
     if (!guild) {
-      await interaction.reply({
+      await interaction.editReply({
         content: "This command must be run in a server.",
-        flags: MessageFlags.Ephemeral,
       });
       return;
     }
@@ -367,9 +357,8 @@ await botClient.createSlashCommand(
       await role.delete();
     }
 
-    await interaction.reply({
+    await interaction.editReply({
       content: "Faction channels and roles deleted (if they existed).",
-      flags: MessageFlags.Ephemeral,
     });
   },
   "Delete a faction",
@@ -384,16 +373,3 @@ await botClient.createSlashCommand(
   ]
 );
 
-client.on("interactionCreate", async (interaction) => {
-  if (interaction.isButton() && interaction.customId === "createFaction_ok") {
-    const prefix = "Create faction: ";
-    const content = interaction.message?.content ?? "";
-    const factionName = content.startsWith(prefix)
-      ? content.slice(prefix.length)
-      : "Faction";
-    await interaction.reply({
-      content: `Faction created: ${factionName}`,
-      flags: MessageFlags.Ephemeral,
-    });
-  }
-});
