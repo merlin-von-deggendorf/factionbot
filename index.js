@@ -60,12 +60,12 @@ await botClient.createSlashCommand(
   async (interaction) => {
     const canManage =
       interaction.memberPermissions?.has(
-        PermissionsBitField.Flags.ManageGuild
+        PermissionsBitField.Flags.Administrator
       ) ?? false;
 
     if (!canManage) {
       await interaction.reply({
-        content: "You need Manage Server permission to run this.",
+        content: "You need Administrator permission to run this.",
         flags: MessageFlags.Ephemeral,
       });
       return;
