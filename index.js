@@ -165,6 +165,14 @@ await botClient.createSlashCommand(
       });
       return;
     }
+    if (!/^[a-z0-9]+$/i.test(factionName)) {
+      await interaction.reply({
+        content:
+          "Faction name must be alphanumeric only (no spaces or symbols).",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
     if (factionName.includes("|")) {
       await interaction.reply({
         content: "Faction name cannot include the '|' character.",
