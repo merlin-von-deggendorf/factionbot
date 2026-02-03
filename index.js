@@ -80,9 +80,10 @@ await botClient.createSlashCommand(
       return;
     }
 
-    const existingCategory = guild.channels.cache.find(
+    const channels = await guild.channels.fetch();
+    const existingCategory = channels.find(
       (channel) =>
-        channel.type === ChannelType.GuildCategory &&
+        channel?.type === ChannelType.GuildCategory &&
         channel.name.toLowerCase() === "faction public chats"
     );
 
