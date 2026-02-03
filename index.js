@@ -58,6 +58,22 @@ await botClient.createSlashCommand(
         });
         return;
       }
+
+      const roles = await guild.roles.fetch();
+      const factionNameLower = factionName.toLowerCase();
+      const leaderRoleName = `${factionName} | leader`.toLowerCase();
+      const roleExists = roles.some((role) => {
+        const roleName = role.name.toLowerCase();
+        return roleName === factionNameLower || roleName === leaderRoleName;
+      });
+
+      if (roleExists) {
+        await interaction.reply({
+          content: "A role with that faction name already exists.",
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
     }
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
