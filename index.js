@@ -415,11 +415,17 @@ await botClient.createSlashCommand(
       return;
     }
 
-    const categoryNames = [
-      ...CATEGORY_NAMES,
-    ];
+    const categoryNames = [...CATEGORY_NAMES];
 
     const created = await botClient.ensureCategories(guild, categoryNames);
+    const roles = await guild.roles.fetch();
+    const jailedRole = roles.find(
+      (role) => normalize(role.name) === "jailed"
+    );
+    let createdRole = null;
+    if (!jailedRole) {
+      createdRole = await guild.roles.create({ name: "jailed" });
+    }
 
     await interaction.reply({
       content:
@@ -430,6 +436,13 @@ await botClient.createSlashCommand(
           : "Setup complete. All categories already exist.",
       flags: MessageFlags.Ephemeral,
     });
+
+    if (createdRole) {
+      await interaction.followUp({
+        content: "Created role: jailed",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
   },
   "Setup the bot"
 );
