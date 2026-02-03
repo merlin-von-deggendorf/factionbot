@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import dbClient from "./db.js";
 import botClient from "./bot.js";
 
@@ -22,3 +23,22 @@ await botClient.createSlashCommand("help", async (interaction) => {
     ephemeral: true,
   });
 });
+
+await botClient.createSlashCommand(
+  "createFaction",
+  async (interaction) => {
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("createFaction_ok")
+        .setLabel("ok")
+        .setStyle(ButtonStyle.Primary)
+    );
+
+    await interaction.reply({
+      content: "Create a faction?",
+      components: [row],
+      ephemeral: true,
+    });
+  },
+  "Create a faction"
+);
