@@ -46,8 +46,10 @@ class BotClient {
       } catch (error) {
         console.error("Interaction handler error:", error);
         if (interaction.isRepliable() && !interaction.replied) {
+          const detail =
+            error instanceof Error ? error.message : "Unknown error";
           await interaction.reply({
-            content: "Something went wrong while handling that command.",
+            content: `Something went wrong: ${detail}`,
             flags: 64,
           });
         }

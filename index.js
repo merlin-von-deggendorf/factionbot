@@ -80,6 +80,29 @@ const countFactionRoles = async (guild) => {
   return factions;
 };
 
+const countFactionRolesFromCache = async (guild) => {
+  const roles = await guild.roles.fetch();
+  const factions = new Map();
+
+  for (const role of roles.values()) {
+    const faction = getFactionFromRoleName(role.name);
+    if (!faction) continue;
+    if (!factions.has(faction)) {
+      factions.set(faction, { member: 0, leader: 0, request: 0, total: 0 });
+    }
+
+    const entry = factions.get(faction);
+    const lower = normalize(role.name);
+    const count = role.members?.size ?? 0;
+    if (lower.endsWith(MEMBER_SUFFIX)) entry.member += count;
+    else if (lower.endsWith(LEADER_SUFFIX)) entry.leader += count;
+    else if (lower.endsWith(REQUEST_SUFFIX)) entry.request += count;
+    entry.total += count;
+  }
+
+  return factions;
+};
+
 client.once("clientReady", () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
@@ -929,20 +952,16 @@ await botClient.createSlashCommand(
     }
 
     let counts;
+    let usedCacheOnly = false;
     try {
       counts = await countFactionRoles(guild);
     } catch (error) {
       if (error?.name === "GatewayRateLimitError") {
-        const retryAfter =
-          typeof error?.data?.retry_after === "number"
-            ? `${error.data.retry_after.toFixed(1)}s`
-            : "a few seconds";
-        await interaction.editReply({
-          content: `Rate limited by Discord. Try again in ${retryAfter}.`,
-        });
-        return;
+        counts = await countFactionRolesFromCache(guild);
+        usedCacheOnly = true;
+      } else {
+        throw error;
       }
-      throw error;
     }
     if (counts.size === 0) {
       await interaction.editReply({
@@ -959,7 +978,11 @@ await botClient.createSlashCommand(
     }
 
     await interaction.editReply({
-      content: lines.join("\n"),
+      content: usedCacheOnly
+        ? `Rate limited by Discord; showing cached counts only.\n${lines.join(
+            "\n"
+          )}`
+        : lines.join("\n"),
     });
   },
   "Count faction roles",
