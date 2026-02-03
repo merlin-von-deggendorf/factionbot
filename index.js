@@ -550,125 +550,6 @@ await botClient.createSlashCommand(
 );
 
 await botClient.createSlashCommand(
-  "setleader",
-  async (interaction) => {
-    const canManage =
-      interaction.memberPermissions?.has(
-        PermissionsBitField.Flags.ManageGuild
-      ) ?? false;
-
-    if (!canManage) {
-      await interaction.reply({
-        content: "You need Manage Server permission to run this.",
-        flags: MessageFlags.Ephemeral,
-      });
-      return;
-    }
-
-    const factionName = interaction.options.getString("faction", true);
-    const member =
-      interaction.options.getMember("member") ??
-      (await interaction.guild?.members.fetch(
-        interaction.options.getUser("member", true).id
-      ));
-
-    if (!interaction.guild || !member) {
-      await interaction.reply({
-        content: "Member not found.",
-        flags: MessageFlags.Ephemeral,
-      });
-      return;
-    }
-
-    const hasFactionRole = member.roles.cache.some((role) =>
-      isFactionRoleName(role.name)
-    );
-
-    if (hasFactionRole) {
-      await interaction.reply({
-        content:
-          "That user is already in a faction. Ask them to run /leavefaction first.",
-        flags: MessageFlags.Ephemeral,
-      });
-      return;
-    }
-
-    const roles = await interaction.guild.roles.fetch();
-    const leaderRoleName = normalize(buildLeaderRoleName(factionName));
-    const leaderRole = roles.find(
-      (role) => normalize(role.name) === leaderRoleName
-    );
-
-    if (!leaderRole) {
-      await interaction.reply({
-        content: "Leader role not found for that faction.",
-        flags: MessageFlags.Ephemeral,
-      });
-      return;
-    }
-
-    try {
-      await member.roles.add(leaderRole);
-      await interaction.reply({
-        content: `Added ${leaderRole.name} to ${member.user.tag}.`,
-        flags: MessageFlags.Ephemeral,
-      });
-    } catch (error) {
-      await interaction.reply({
-        content:
-          "I don't have permission to assign roles. Check my role hierarchy and Manage Roles permission.",
-        flags: MessageFlags.Ephemeral,
-      });
-    }
-  },
-  "Set a faction leader",
-  "guild",
-  [
-    {
-      name: "faction",
-      description: "Faction name",
-      type: ApplicationCommandOptionType.String,
-      required: true,
-      autocomplete: true,
-    },
-    {
-      name: "member",
-      description: "Server member",
-      type: ApplicationCommandOptionType.User,
-      required: true,
-    },
-  ]
-);
-
-botClient.setAutocomplete("setleader", async (interaction) => {
-  const guild = interaction.guild;
-  if (!guild) {
-    await interaction.respond([]);
-    return;
-  }
-
-  const focused = normalize(interaction.options.getFocused() ?? "");
-  const roles = await guild.roles.fetch();
-  const factions = new Set();
-
-  for (const role of roles.values()) {
-    const name = role.name;
-    const lower = normalize(name);
-    if (lower.endsWith(MEMBER_SUFFIX)) {
-      const faction = name.slice(0, name.length - MEMBER_SUFFIX.length);
-      factions.add(faction);
-    }
-  }
-
-  const choices = Array.from(factions)
-    .filter((name) => normalize(name).includes(focused))
-    .slice(0, 25)
-    .map((name) => ({ name, value: name }));
-
-  await interaction.respond(choices);
-});
-
-await botClient.createSlashCommand(
   "approverequest",
   async (interaction) => {
     const factionName = interaction.options.getString("faction", true);
@@ -820,7 +701,7 @@ await botClient.createSlashCommand(
   async (interaction) => {
     await interaction.reply({
       content:
-        "Commands: /setup, /createfaction, /joinfaction, /leavefaction, /setleader, /approverequest, /delete, /addleader, /countfactions",
+        "Commands: /setup, /createfaction, /joinfaction, /leavefaction, /approverequest, /delete, /addleader, /countfactions",
       flags: MessageFlags.Ephemeral,
     });
   },
