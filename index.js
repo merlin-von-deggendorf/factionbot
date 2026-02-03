@@ -80,6 +80,20 @@ await botClient.createSlashCommand(
       return;
     }
 
+    const existingCategory = guild.channels.cache.find(
+      (channel) =>
+        channel.type === ChannelType.GuildCategory &&
+        channel.name.toLowerCase() === "faction public chats"
+    );
+
+    if (existingCategory) {
+      await interaction.reply({
+        content: `Setup already done. Category exists: ${existingCategory.name}`,
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
     const category = await guild.channels.create({
       name: "faction public chats",
       type: ChannelType.GuildCategory,
