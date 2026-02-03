@@ -27,6 +27,80 @@ const REQUEST_SUFFIX = " | request";
 
 const client = botClient.getClient();
 
+const isFactionRoleName = (name) => {
+  const lower = normalize(name);
+  return (
+    lower.endsWith(MEMBER_SUFFIX) ||
+    lower.endsWith(LEADER_SUFFIX) ||
+    lower.endsWith(REQUEST_SUFFIX)
+  );
+};
+
+const getFactionFromRoleName = (name) => {
+  const lower = normalize(name);
+  if (lower.endsWith(MEMBER_SUFFIX)) {
+    return name.slice(0, name.length - MEMBER_SUFFIX.length);
+  }
+  if (lower.endsWith(LEADER_SUFFIX)) {
+    return name.slice(0, name.length - LEADER_SUFFIX.length);
+  }
+  if (lower.endsWith(REQUEST_SUFFIX)) {
+    return name.slice(0, name.length - REQUEST_SUFFIX.length);
+  }
+  return null;
+};
+
+const updateFactionCount = async (guild, factionName) => {
+  const roles = await guild.roles.fetch();
+  const memberRole = roles.find(
+    (r) => normalize(r.name) === normalize(buildMemberRoleName(factionName))
+  );
+  const leaderRole = roles.find(
+    (r) => normalize(r.name) === normalize(buildLeaderRoleName(factionName))
+  );
+  const requestRole = roles.find(
+    (r) => normalize(r.name) === normalize(buildRequestRoleName(factionName))
+  );
+
+  const memberIds = new Set();
+  for (const role of [memberRole, leaderRole, requestRole]) {
+    if (!role) continue;
+    for (const id of role.members.keys()) {
+      memberIds.add(id);
+    }
+  }
+
+  const channels = await guild.channels.fetch();
+  const publicVoice = channels.find(
+    (channel) =>
+      channel?.type === ChannelType.GuildCategory &&
+      normalize(channel.name) === "public voice"
+  );
+
+  if (!publicVoice) return;
+
+  const target = channels.find((channel) => {
+    if (!channel || channel.type !== ChannelType.GuildVoice) return false;
+    if (!channel.parent || channel.parent.id !== publicVoice.id) return false;
+    return normalize(channel.name).startsWith(
+      `${normalize(factionName)} |`
+    );
+  });
+
+  if (!target) return;
+
+  const desiredName = `${factionName} | ${memberIds.size}`;
+  if (target.name !== desiredName) {
+    await target.edit({ name: desiredName });
+  }
+};
+
+const updateCountsForFactions = async (guild, factionNames) => {
+  for (const name of factionNames) {
+    await updateFactionCount(guild, name);
+  }
+};
+
 client.once("clientReady", () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
@@ -35,6 +109,55 @@ client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
   if (message.content.toLowerCase() === "hello") {
     message.channel.send("Hello worldsssss!");
+  }
+});
+
+client.on("guildMemberRemove", async (member) => {
+  const factions = new Set();
+  for (const role of member.roles.cache.values()) {
+    const faction = getFactionFromRoleName(role.name);
+    if (faction) factions.add(faction);
+  }
+
+  if (factions.size > 0) {
+    await updateCountsForFactions(member.guild, factions);
+  }
+});
+
+client.on("guildMemberUpdate", async (oldMember, newMember) => {
+  const oldFactionRoles = oldMember.roles.cache.filter((role) =>
+    isFactionRoleName(role.name)
+  );
+  const newFactionRoles = newMember.roles.cache.filter((role) =>
+    isFactionRoleName(role.name)
+  );
+
+  const addedRoles = newFactionRoles.filter(
+    (role) => !oldFactionRoles.has(role.id)
+  );
+
+  if (addedRoles.size > 0) {
+    const keepRole = addedRoles.first();
+    const toRemove = newFactionRoles.filter(
+      (role) => role.id !== keepRole.id
+    );
+    if (toRemove.size > 0) {
+      await newMember.roles.remove(toRemove);
+    }
+  }
+
+  const affectedFactions = new Set();
+  for (const role of oldFactionRoles.values()) {
+    const faction = getFactionFromRoleName(role.name);
+    if (faction) affectedFactions.add(faction);
+  }
+  for (const role of newFactionRoles.values()) {
+    const faction = getFactionFromRoleName(role.name);
+    if (faction) affectedFactions.add(faction);
+  }
+
+  if (affectedFactions.size > 0) {
+    await updateCountsForFactions(newMember.guild, affectedFactions);
   }
 });
 
@@ -136,9 +259,9 @@ await botClient.createSlashCommand(
         return;
       }
 
-      await guild.roles.create({ name: buildMemberRoleName(factionName) });
-      await guild.roles.create({ name: buildLeaderRoleName(factionName) });
-      await guild.roles.create({ name: buildRequestRoleName(factionName) });
+    await guild.roles.create({ name: buildMemberRoleName(factionName) });
+    await guild.roles.create({ name: buildLeaderRoleName(factionName) });
+    await guild.roles.create({ name: buildRequestRoleName(factionName) });
 
       await guild.channels.create({
         name: buildVanillaChannelName(factionName),
@@ -163,6 +286,9 @@ await botClient.createSlashCommand(
         type: ChannelType.GuildVoice,
         parent: categories["private voice"].id,
       });
+    }
+    if (guild) {
+      await updateFactionCount(guild, factionName);
     }
     await interaction.editReply({
       content: `Create faction: ${factionName}`,
@@ -274,6 +400,7 @@ await botClient.createSlashCommand(
       content: `Added ${role.name} to ${member.user.tag}.`,
       flags: MessageFlags.Ephemeral,
     });
+    await updateFactionCount(interaction.guild, factionName);
   },
   "Add leader role to a member",
   "guild",
@@ -351,6 +478,7 @@ await botClient.createSlashCommand(
       content: `Request sent for ${factionName}.`,
       flags: MessageFlags.Ephemeral,
     });
+    await updateFactionCount(guild, factionName);
   },
   "Join a faction",
   "guild",
@@ -423,11 +551,18 @@ await botClient.createSlashCommand(
       return;
     }
 
+    const factionsToUpdate = new Set();
+    for (const role of rolesToRemove.values()) {
+      const faction = getFactionFromRoleName(role.name);
+      if (faction) factionsToUpdate.add(faction);
+    }
+
     await member.roles.remove(rolesToRemove);
     await interaction.reply({
       content: "You have left your faction.",
       flags: MessageFlags.Ephemeral,
     });
+    await updateCountsForFactions(guild, factionsToUpdate);
   },
   "Leave your faction",
   "guild"
