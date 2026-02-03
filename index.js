@@ -5,7 +5,6 @@ import {
   ButtonStyle,
   MessageFlags,
   ApplicationCommandOptionType,
-  ChannelType,
   PermissionsBitField,
 } from "discord.js";
 import dbClient from "./db.js";
@@ -80,44 +79,22 @@ await botClient.createSlashCommand(
       return;
     }
 
-    const channels = await guild.channels.fetch();
-    const existingCategory = channels.find(
-      (channel) =>
-        channel?.type === ChannelType.GuildCategory &&
-        channel.name.toLowerCase() === "faction public chats"
-    );
-
-    let category = existingCategory;
-    if (!category) {
-      category = await guild.channels.create({
-        name: "faction public chats",
-        type: ChannelType.GuildCategory,
-      });
-    }
-
-    const channelSpecs = [
-      { name: "factions private chat", type: ChannelType.GuildText },
-      { name: "factions public voice", type: ChannelType.GuildVoice },
-      { name: "factions private voice", type: ChannelType.GuildVoice },
+    const categoryNames = [
+      "public chat",
+      "public voice",
+      "private chat",
+      "private voice",
     ];
 
-    for (const spec of channelSpecs) {
-      const existing = channels.find(
-        (channel) =>
-          channel?.type === spec.type &&
-          channel.name.toLowerCase() === spec.name
-      );
-      if (!existing) {
-        await guild.channels.create({
-          name: spec.name,
-          type: spec.type,
-          parent: category.id,
-        });
-      }
-    }
+    const created = await botClient.ensureCategories(guild, categoryNames);
 
     await interaction.reply({
-      content: `Setup complete. Category: ${category.name}`,
+      content:
+        created.length > 0
+          ? `Setup complete. Created categories: ${created
+              .map((c) => c.name)
+              .join(", ")}`
+          : "Setup complete. All categories already exist.",
       flags: MessageFlags.Ephemeral,
     });
   },

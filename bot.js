@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits } from "discord.js";
+import { ChannelType, Client, GatewayIntentBits } from "discord.js";
 
 class BotClient {
   constructor() {
@@ -50,6 +50,30 @@ class BotClient {
         await guild.commands.create(payload);
       }
     }
+  }
+
+  async ensureCategories(guild, categoryNames) {
+    const channels = await guild.channels.fetch();
+    const created = [];
+
+    for (const name of categoryNames) {
+      const normalizedName = name.toLowerCase();
+      let category = channels.find(
+        (channel) =>
+          channel?.type === ChannelType.GuildCategory &&
+          channel.name.toLowerCase() === normalizedName
+      );
+
+      if (!category) {
+        category = await guild.channels.create({
+          name,
+          type: ChannelType.GuildCategory,
+        });
+        created.push(category);
+      }
+    }
+
+    return created;
   }
 
   getClient() {
