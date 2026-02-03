@@ -80,10 +80,10 @@ await botClient.createSlashCommand(
     }
 
     const categoryNames = [
-      "public chat",
-      "public voice",
-      "private chat",
-      "private voice",
+      "faction public chat",
+      "faction public voice",
+      "faction private chat",
+      "faction private voice",
     ];
 
     const created = await botClient.ensureCategories(guild, categoryNames);
