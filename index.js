@@ -396,11 +396,20 @@ await botClient.createSlashCommand(
     }
 
     await member.roles.add(role);
-    await interaction.reply({
-      content: `Added ${role.name} to ${member.user.tag}.`,
-      flags: MessageFlags.Ephemeral,
-    });
-    await updateFactionCount(interaction.guild, factionName);
+    try {
+      await member.roles.add(role);
+      await interaction.reply({
+        content: `Added ${role.name} to ${member.user.tag}.`,
+        flags: MessageFlags.Ephemeral,
+      });
+      await updateFactionCount(interaction.guild, factionName);
+    } catch (error) {
+      await interaction.reply({
+        content:
+          "I don't have permission to assign roles. Check my role hierarchy and Manage Roles permission.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
   },
   "Add leader role to a member",
   "guild",
@@ -473,12 +482,20 @@ await botClient.createSlashCommand(
       return;
     }
 
-    await member.roles.add(requestRole);
-    await interaction.reply({
-      content: `Request sent for ${factionName}.`,
-      flags: MessageFlags.Ephemeral,
-    });
-    await updateFactionCount(guild, factionName);
+    try {
+      await member.roles.add(requestRole);
+      await interaction.reply({
+        content: `Request sent for ${factionName}.`,
+        flags: MessageFlags.Ephemeral,
+      });
+      await updateFactionCount(guild, factionName);
+    } catch (error) {
+      await interaction.reply({
+        content:
+          "I don't have permission to assign roles. Check my role hierarchy and Manage Roles permission.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
   },
   "Join a faction",
   "guild",
@@ -557,12 +574,20 @@ await botClient.createSlashCommand(
       if (faction) factionsToUpdate.add(faction);
     }
 
-    await member.roles.remove(rolesToRemove);
-    await interaction.reply({
-      content: "You have left your faction.",
-      flags: MessageFlags.Ephemeral,
-    });
-    await updateCountsForFactions(guild, factionsToUpdate);
+    try {
+      await member.roles.remove(rolesToRemove);
+      await interaction.reply({
+        content: "You have left your faction.",
+        flags: MessageFlags.Ephemeral,
+      });
+      await updateCountsForFactions(guild, factionsToUpdate);
+    } catch (error) {
+      await interaction.reply({
+        content:
+          "I don't have permission to remove roles. Check my role hierarchy and Manage Roles permission.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
   },
   "Leave your faction",
   "guild"
@@ -627,11 +652,20 @@ await botClient.createSlashCommand(
     }
 
     await member.roles.add(leaderRole);
-    await interaction.reply({
-      content: `Added ${leaderRole.name} to ${member.user.tag}.`,
-      flags: MessageFlags.Ephemeral,
-    });
-    await updateFactionCount(interaction.guild, factionName);
+    try {
+      await member.roles.add(leaderRole);
+      await interaction.reply({
+        content: `Added ${leaderRole.name} to ${member.user.tag}.`,
+        flags: MessageFlags.Ephemeral,
+      });
+      await updateFactionCount(interaction.guild, factionName);
+    } catch (error) {
+      await interaction.reply({
+        content:
+          "I don't have permission to assign roles. Check my role hierarchy and Manage Roles permission.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
   },
   "Set a faction leader",
   "guild",
@@ -737,13 +771,21 @@ await botClient.createSlashCommand(
       return;
     }
 
-    await member.roles.remove(requestRole);
-    await member.roles.add(memberRole);
-    await interaction.reply({
-      content: `Approved ${member.user.tag} for ${factionName}.`,
-      flags: MessageFlags.Ephemeral,
-    });
-    await updateFactionCount(interaction.guild, factionName);
+    try {
+      await member.roles.remove(requestRole);
+      await member.roles.add(memberRole);
+      await interaction.reply({
+        content: `Approved ${member.user.tag} for ${factionName}.`,
+        flags: MessageFlags.Ephemeral,
+      });
+      await updateFactionCount(interaction.guild, factionName);
+    } catch (error) {
+      await interaction.reply({
+        content:
+          "I don't have permission to modify roles. Check my role hierarchy and Manage Roles permission.",
+        flags: MessageFlags.Ephemeral,
+      });
+    }
   },
   "Approve a faction join request",
   "guild",
