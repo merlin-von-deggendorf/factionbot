@@ -62,11 +62,17 @@ const updateFactionCount = async (guild, factionName) => {
     (r) => normalize(r.name) === normalize(buildRequestRoleName(factionName))
   );
 
-  const memberIds = new Set();
-  for (const role of [memberRole, leaderRole, requestRole]) {
-    if (!role) continue;
-    for (const id of role.members.keys()) {
-      memberIds.add(id);
+  const roleIds = [memberRole, leaderRole, requestRole]
+    .filter(Boolean)
+    .map((role) => role.id);
+
+  if (roleIds.length === 0) return;
+
+  const members = await guild.members.fetch();
+  let count = 0;
+  for (const member of members.values()) {
+    if (roleIds.some((id) => member.roles.cache.has(id))) {
+      count += 1;
     }
   }
 
@@ -89,7 +95,7 @@ const updateFactionCount = async (guild, factionName) => {
 
   if (!target) return;
 
-  const desiredName = `${factionName} | ${memberIds.size}`;
+  const desiredName = `${factionName} | ${count}`;
   if (target.name !== desiredName) {
     await target.edit({ name: desiredName });
   }
@@ -179,7 +185,15 @@ await botClient.createSlashCommand(
       return;
     }
 
-    const factionName = interaction.options.getString("name", true);
+    const factionName = interaction.options.getString("name");
+    if (!factionName) {
+      await interaction.reply({
+        content:
+          "Missing required option: name. Re-run /createfaction and fill the name field.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
     if (factionName.includes("|")) {
       await interaction.reply({
         content: "Faction name cannot include the '|' character.",
@@ -834,6 +848,47 @@ botClient.setAutocomplete("approverequest", async (interaction) => {
   await interaction.respond(choices);
 });
 
+botClient.setAutocomplete("delete", async (interaction) => {
+  const guild = interaction.guild;
+  if (!guild) {
+    await interaction.respond([]);
+    return;
+  }
+
+  const focused = normalize(interaction.options.getFocused() ?? "");
+  const roles = await guild.roles.fetch();
+  const factions = new Set();
+
+  for (const role of roles.values()) {
+    const name = role.name;
+    const lower = normalize(name);
+    if (lower.endsWith(MEMBER_SUFFIX)) {
+      const faction = name.slice(0, name.length - MEMBER_SUFFIX.length);
+      factions.add(faction);
+    }
+  }
+
+  const choices = Array.from(factions)
+    .filter((name) => normalize(name).includes(focused))
+    .slice(0, 25)
+    .map((name) => ({ name, value: name }));
+
+  await interaction.respond(choices);
+});
+
+await botClient.createSlashCommand(
+  "help",
+  async (interaction) => {
+    await interaction.reply({
+      content:
+        "Commands: /setup, /createfaction, /joinfaction, /leavefaction, /setleader, /approverequest, /delete, /addleader",
+      flags: MessageFlags.Ephemeral,
+    });
+  },
+  "Show help",
+  "guild"
+);
+
 await botClient.createSlashCommand(
   "delete",
   async (interaction) => {
@@ -913,6 +968,7 @@ await botClient.createSlashCommand(
       description: "Faction name",
       type: ApplicationCommandOptionType.String,
       required: true,
+      autocomplete: true,
     },
   ]
 );
