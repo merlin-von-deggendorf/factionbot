@@ -1,5 +1,10 @@
 import "dotenv/config";
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  MessageFlags,
+} from "discord.js";
 import dbClient from "./db.js";
 import botClient from "./bot.js";
 
@@ -20,14 +25,14 @@ await botClient.connect();
 await botClient.createSlashCommand("help", async (interaction) => {
   await interaction.reply({
     content: "Commands: /help",
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 });
 await botClient.connect();
 await botClient.createSlashCommand("help2", async (interaction) => {
   await interaction.reply({
     content: "Commands: /help",
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   });
 });
 
@@ -44,7 +49,7 @@ await botClient.createSlashCommand(
     await interaction.reply({
       content: "Create a faction?",
       components: [row],
-      ephemeral: true,
+      flags: MessageFlags.Ephemeral,
     });
   },
   "Create a faction"
