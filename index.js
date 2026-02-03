@@ -1160,9 +1160,13 @@ await botClient.createSlashCommand(
       await role.delete();
     }
 
-    await interaction.editReply({
-      content: "Faction channels and roles deleted (if they existed).",
-    });
+    try {
+      await interaction.editReply({
+        content: "Faction channels and roles deleted (if they existed).",
+      });
+    } catch (error) {
+      console.error("Failed to edit delete reply:", error);
+    }
   },
   "Delete a faction",
   "guild",

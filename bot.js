@@ -46,13 +46,23 @@ class BotClient {
         await handler(interaction);
       } catch (error) {
         console.error("Interaction handler error:", error);
-        if (interaction.isRepliable() && !interaction.replied) {
+        if (interaction.isRepliable()) {
           const detail =
             error instanceof Error ? error.message : "Unknown error";
-          await interaction.reply({
-            content: `Something went wrong: ${detail}`,
-            flags: 64,
-          });
+          try {
+            if (interaction.deferred || interaction.replied) {
+              await interaction.editReply({
+                content: `Something went wrong: ${detail}`,
+              });
+            } else {
+              await interaction.reply({
+                content: `Something went wrong: ${detail}`,
+                flags: 64,
+              });
+            }
+          } catch (replyError) {
+            console.error("Failed to send error reply:", replyError);
+          }
         }
       }
     });
