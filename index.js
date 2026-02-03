@@ -22,19 +22,6 @@ client.on("messageCreate", async (message) => {
 });
 
 await botClient.connect();
-await botClient.createSlashCommand("help", async (interaction) => {
-  await interaction.reply({
-    content: "Commands: /help",
-    flags: MessageFlags.Ephemeral,
-  });
-});
-await botClient.connect();
-await botClient.createSlashCommand("help2", async (interaction) => {
-  await interaction.reply({
-    content: "Commands: /help",
-    flags: MessageFlags.Ephemeral,
-  });
-});
 
 await botClient.createSlashCommand(
   "createfaction",
