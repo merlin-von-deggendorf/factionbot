@@ -29,19 +29,49 @@ class BotClient {
     });
 
     this.client.on("interactionCreate", async (interaction) => {
-      if (interaction.isAutocomplete()) {
-        const handler = this.autocompleteHandlers.get(
-          interaction.commandName.toLowerCase()
-        );
-        if (handler) {
-          await handler(interaction);
+      try {
+        if (interaction.isAutocomplete()) {
+          const handler = this.autocompleteHandlers.get(
+            interaction.commandName.toLowerCase()
+          );
+          if (handler) {
+            await handler(interaction);
+          }
+          return;
         }
-        return;
+        if (!interaction.isChatInputCommand()) return;
+        const handler = this.commands.get(interaction.commandName);
+        if (!handler) return;
+        await handler(interaction);
+      } catch (error) {
+        console.error("Interaction handler error:", error);
+        if (interaction.isRepliable() && !interaction.replied) {
+          await interaction.reply({
+            content: "Something went wrong while handling that command.",
+            flags: 64,
+          });
+        }
       }
-      if (!interaction.isChatInputCommand()) return;
-      const handler = this.commands.get(interaction.commandName);
-      if (!handler) return;
-      await handler(interaction);
+    });
+
+    this.client.on("error", (error) => {
+      console.error("Discord client error:", error);
+    });
+
+    this.client.on("shardError", (error) => {
+      console.error("Discord shard error:", error);
+    });
+
+    this.client.on("rateLimit", (info) => {
+      console.warn("Rate limited:", info);
+    });
+
+    process.on("unhandledRejection", (reason) => {
+      console.error("Unhandled rejection:", reason);
+    });
+
+    process.on("uncaughtException", (error) => {
+      console.error("Uncaught exception:", error);
     });
   }
 
