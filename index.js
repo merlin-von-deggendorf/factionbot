@@ -244,32 +244,134 @@ await botClient.createSlashCommand(
         return;
       }
 
-    await guild.roles.create({ name: buildMemberRoleName(factionName) });
-    await guild.roles.create({ name: buildLeaderRoleName(factionName) });
-    await guild.roles.create({ name: buildRequestRoleName(factionName) });
+      const jailedRole = roles.find(
+        (role) => normalize(role.name) === "jailed"
+      );
+
+      if (!jailedRole) {
+        await interaction.editReply({
+          content:
+            "Missing required role: jailed. Create a role named 'jailed' first.",
+        });
+        return;
+      }
+
+      const memberRole = await guild.roles.create({
+        name: buildMemberRoleName(factionName),
+      });
+      const leaderRole = await guild.roles.create({
+        name: buildLeaderRoleName(factionName),
+      });
+      const requestRole = await guild.roles.create({
+        name: buildRequestRoleName(factionName),
+      });
+
+      const publicChatOverwrites = [
+        { id: jailedRole.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+        {
+          id: requestRole.id,
+          allow: [
+            PermissionsBitField.Flags.ViewChannel,
+            PermissionsBitField.Flags.SendMessages,
+            PermissionsBitField.Flags.ReadMessageHistory,
+          ],
+        },
+        {
+          id: memberRole.id,
+          allow: [
+            PermissionsBitField.Flags.ViewChannel,
+            PermissionsBitField.Flags.SendMessages,
+            PermissionsBitField.Flags.ReadMessageHistory,
+          ],
+        },
+        {
+          id: leaderRole.id,
+          allow: [
+            PermissionsBitField.Flags.ViewChannel,
+            PermissionsBitField.Flags.SendMessages,
+            PermissionsBitField.Flags.ReadMessageHistory,
+          ],
+        },
+      ];
+
+      const privateChatOverwrites = [
+        {
+          id: guild.roles.everyone.id,
+          deny: [PermissionsBitField.Flags.ViewChannel],
+        },
+        { id: jailedRole.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+        {
+          id: memberRole.id,
+          allow: [
+            PermissionsBitField.Flags.ViewChannel,
+            PermissionsBitField.Flags.SendMessages,
+            PermissionsBitField.Flags.ReadMessageHistory,
+          ],
+        },
+        {
+          id: leaderRole.id,
+          allow: [
+            PermissionsBitField.Flags.ViewChannel,
+            PermissionsBitField.Flags.SendMessages,
+            PermissionsBitField.Flags.ReadMessageHistory,
+          ],
+        },
+      ];
+
+      const publicVoiceOverwrites = [
+        { id: jailedRole.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+      ];
+
+      const privateVoiceOverwrites = [
+        {
+          id: guild.roles.everyone.id,
+          deny: [PermissionsBitField.Flags.ViewChannel],
+        },
+        { id: jailedRole.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+        {
+          id: memberRole.id,
+          allow: [
+            PermissionsBitField.Flags.ViewChannel,
+            PermissionsBitField.Flags.Connect,
+            PermissionsBitField.Flags.Speak,
+          ],
+        },
+        {
+          id: leaderRole.id,
+          allow: [
+            PermissionsBitField.Flags.ViewChannel,
+            PermissionsBitField.Flags.Connect,
+            PermissionsBitField.Flags.Speak,
+          ],
+        },
+      ];
 
       await guild.channels.create({
         name: buildVanillaChannelName(factionName),
         type: ChannelType.GuildText,
         parent: categories["public chat"].id,
+        permissionOverwrites: publicChatOverwrites,
       });
 
       await guild.channels.create({
         name: buildVanillaChannelName(factionName),
         type: ChannelType.GuildText,
         parent: categories["private chat"].id,
+        permissionOverwrites: privateChatOverwrites,
       });
 
       await guild.channels.create({
         name: buildPublicVoiceChannelName(factionName),
         type: ChannelType.GuildVoice,
         parent: categories["public voice"].id,
+        permissionOverwrites: publicVoiceOverwrites,
       });
 
       await guild.channels.create({
         name: buildVanillaChannelName(factionName),
         type: ChannelType.GuildVoice,
         parent: categories["private voice"].id,
+        permissionOverwrites: privateVoiceOverwrites,
       });
     }
     await interaction.editReply({
@@ -1074,4 +1176,3 @@ await botClient.createSlashCommand(
     },
   ]
 );
-
