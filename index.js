@@ -1,25 +1,6 @@
 import "dotenv/config";
 import { Client, GatewayIntentBits } from "discord.js";
-import { MongoClient } from "mongodb";
-
-const mongoUri = process.env.MONGODB_URI;
-const mongoDbName = process.env.MONGODB_DB ?? "factionbot";
-if (!mongoUri) {
-  console.error("Missing MONGODB_URI in environment.");
-  process.exit(1);
-}
-
-const mongo = new MongoClient(mongoUri, {
-  serverSelectionTimeoutMS: 5000,
-});
-
-async function connectMongo() {
-  await mongo.connect();
-  const db = mongo.db(mongoDbName);
-  await db.command({ ping: 1 });
-  console.log(`MongoDB connected: ${db.databaseName}`);
-  return db;
-}
+import { closeDb, connectDb } from "./db.js";
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) {
@@ -45,15 +26,14 @@ client.on("messageCreate", async (message) => {
   }
 });
 
-const db = await connectMongo();
+const db = await connectDb();
 client.db = db;
 
 await client.login(token);
 
 const shutdown = async () => {
   try {
-    await mongo.close();
-    console.log("MongoDB disconnected.");
+    await closeDb();
   } catch (error) {
     console.error("MongoDB disconnect error:", error);
   } finally {
