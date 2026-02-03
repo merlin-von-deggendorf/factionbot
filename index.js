@@ -29,6 +29,19 @@ await botClient.connect();
 await botClient.createSlashCommand(
   "createfaction",
   async (interaction) => {
+    const canManage =
+      interaction.memberPermissions?.has(
+        PermissionsBitField.Flags.ManageGuild
+      ) ?? false;
+
+    if (!canManage) {
+      await interaction.reply({
+        content: "You need Manage Server permission to run this.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
     const factionName = interaction.options.getString("name", true);
     if (factionName.includes("|")) {
       await interaction.reply({
