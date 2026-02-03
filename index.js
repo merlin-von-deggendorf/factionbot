@@ -14,4 +14,11 @@ client.on("messageCreate", async (message) => {
     message.channel.send("Hello worlds!");
   }
 });
+
 await botClient.connect();
+await botClient.createSlashCommand("help", async (interaction) => {
+  await interaction.reply({
+    content: "Commands: /help",
+    ephemeral: true,
+  });
+});
