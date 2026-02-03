@@ -81,9 +81,14 @@ await botClient.createSlashCommand(
       const roles = await guild.roles.fetch();
       const factionNameLower = factionName.toLowerCase();
       const leaderRoleName = `${factionName} | leader`.toLowerCase();
+      const requestRoleName = `${factionName} | request`.toLowerCase();
       const roleExists = roles.some((role) => {
         const roleName = role.name.toLowerCase();
-        return roleName === factionNameLower || roleName === leaderRoleName;
+        return (
+          roleName === factionNameLower ||
+          roleName === leaderRoleName ||
+          roleName === requestRoleName
+        );
       });
 
       if (roleExists) {
@@ -114,6 +119,7 @@ await botClient.createSlashCommand(
 
       await guild.roles.create({ name: factionName });
       await guild.roles.create({ name: `${factionName} | leader` });
+      await guild.roles.create({ name: `${factionName} | request` });
 
       const channelName = `${factionName} | 0`;
 
