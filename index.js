@@ -111,6 +111,27 @@ client.once("clientReady", () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
 
+client.once("clientReady", async () => {
+  try {
+    const guilds = client.guilds.cache.values();
+    for (const guild of guilds) {
+      const roles = await guild.roles.fetch();
+      const factions = new Set();
+
+      for (const role of roles.values()) {
+        const faction = getFactionFromRoleName(role.name);
+        if (faction) factions.add(faction);
+      }
+
+      if (factions.size > 0) {
+        await updateCountsForFactions(guild, factions);
+      }
+    }
+  } catch (error) {
+    console.error("Failed to refresh faction counters:", error);
+  }
+});
+
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
   if (message.content.toLowerCase() === "hello") {
@@ -886,6 +907,43 @@ await botClient.createSlashCommand(
     });
   },
   "Show help",
+  "guild"
+);
+
+await botClient.createSlashCommand(
+  "resync",
+  async (interaction) => {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+    const guild = interaction.guild;
+    if (!guild) {
+      await interaction.editReply({
+        content: "This command must be run in a server.",
+      });
+      return;
+    }
+
+    const roles = await guild.roles.fetch();
+    const factions = new Set();
+
+    for (const role of roles.values()) {
+      const faction = getFactionFromRoleName(role.name);
+      if (faction) factions.add(faction);
+    }
+
+    if (factions.size === 0) {
+      await interaction.editReply({
+        content: "No factions found to resync.",
+      });
+      return;
+    }
+
+    await updateCountsForFactions(guild, factions);
+    await interaction.editReply({
+      content: "Faction counters resynced.",
+    });
+  },
+  "Resync faction counters",
   "guild"
 );
 
