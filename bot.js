@@ -28,14 +28,27 @@ class BotClient {
     await this.readyPromise;
   }
 
-  async createSlashCommand(name, behaviour, description = "Command") {
+  async createSlashCommand(
+    name,
+    behaviour,
+    description = "Command",
+    scope = "both"
+  ) {
     const commandName = name.toLowerCase();
     this.commands.set(commandName, behaviour);
     await this.readyPromise;
-    await this.client.application.commands.create({
-      name: commandName,
-      description,
-    });
+
+    const payload = { name: commandName, description };
+
+    if (scope === "global" || scope === "both") {
+      await this.client.application.commands.create(payload);
+    }
+
+    if (scope === "guild" || scope === "both") {
+      for (const guild of this.client.guilds.cache.values()) {
+        await guild.commands.create(payload);
+      }
+    }
   }
 
   getClient() {
