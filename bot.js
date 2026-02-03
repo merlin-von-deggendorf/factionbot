@@ -18,7 +18,6 @@ class BotClient {
       process.exit(1);
     }
     await this.client.login(this.token);
-    return this.client;
   }
 
   getClient() {
@@ -27,5 +26,5 @@ class BotClient {
 }
 
 const botClient = new BotClient();
-
+await botClient.connect();
 export default botClient;

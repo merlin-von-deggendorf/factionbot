@@ -1,6 +1,6 @@
 import "dotenv/config";
-import botClient from "./bot.js";
 import dbClient from "./db.js";
+import botClient from "./bot.js";
 
 const client = botClient.getClient();
 
@@ -11,6 +11,6 @@ client.once("clientReady", () => {
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
   if (message.content.toLowerCase() === "hello") {
-    message.channel.send("Hello world!");
+    message.channel.send("Hello worlds!");
   }
 });
