@@ -63,6 +63,8 @@ await botClient.createSlashCommand(
       return;
     }
 
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
     const guild = interaction.guild;
     if (guild) {
       const channels = await guild.channels.fetch();
@@ -77,9 +79,8 @@ await botClient.createSlashCommand(
       );
 
       if (existing) {
-        await interaction.reply({
+        await interaction.editReply({
           content: "A faction channel with that name already exists.",
-          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -98,9 +99,8 @@ await botClient.createSlashCommand(
       });
 
       if (roleExists) {
-        await interaction.reply({
+        await interaction.editReply({
           content: "A role with that faction name already exists.",
-          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -116,9 +116,8 @@ await botClient.createSlashCommand(
       }, {});
 
       if (Object.values(categories).some((category) => !category)) {
-        await interaction.reply({
+        await interaction.editReply({
           content: "Setup is missing required categories. Run /setup first.",
-          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -160,10 +159,9 @@ await botClient.createSlashCommand(
         .setStyle(ButtonStyle.Primary)
     );
 
-    await interaction.reply({
+    await interaction.editReply({
       content: `Create faction: ${factionName}`,
       components: [row],
-      flags: MessageFlags.Ephemeral,
     });
   },
   "Create a faction",
