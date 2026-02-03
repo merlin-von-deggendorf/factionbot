@@ -448,8 +448,13 @@ await botClient.createSlashCommand(
     });
 
     if (hasFactionRole) {
+      const currentFactionRoles = member.roles.cache
+        .filter((role) => isFactionRoleName(role.name))
+        .map((role) => role.name);
       await interaction.reply({
-        content: "You can only be in one faction at a time.",
+        content: `You can only be in one faction at a time. Current roles: ${currentFactionRoles.join(
+          ", "
+        )}. Use /leavefaction to leave.`,
         flags: MessageFlags.Ephemeral,
       });
       return;
