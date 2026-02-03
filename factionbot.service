@@ -1,0 +1,14 @@
+[Unit]
+Description=Factionbot Discord Bot
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/factionbot
+ExecStart=/usr/bin/node index.js
+Restart=on-failure
+RestartSec=5
+EnvironmentFile=/root/factionbot/.env
+
+[Install]
+WantedBy=multi-user.target
