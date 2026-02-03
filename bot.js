@@ -133,7 +133,7 @@ class BotClient {
       }
     }
 
-    if (globals.length > 0) {
+    {
       const existing = await this.client.application.commands.fetch();
       for (const cmd of existing.values()) {
         if (!globalNames.has(cmd.name)) {
@@ -155,26 +155,24 @@ class BotClient {
       }
     }
 
-    if (guilds.length > 0) {
-      for (const guild of this.client.guilds.cache.values()) {
-        const existing = await guild.commands.fetch();
-        for (const cmd of existing.values()) {
-          if (!guildNames.has(cmd.name)) {
-            await guild.commands.delete(cmd.id);
-          }
+    for (const guild of this.client.guilds.cache.values()) {
+      const existing = await guild.commands.fetch();
+      for (const cmd of existing.values()) {
+        if (!guildNames.has(cmd.name)) {
+          await guild.commands.delete(cmd.id);
         }
-        for (const def of guilds) {
-          const payload = {
-            name: def.name,
-            description: def.description,
-            options: def.options,
-          };
-          const match = existing.find((cmd) => cmd.name === def.name);
-          if (match) {
-            await guild.commands.edit(match.id, payload);
-          } else {
-            await guild.commands.create(payload);
-          }
+      }
+      for (const def of guilds) {
+        const payload = {
+          name: def.name,
+          description: def.description,
+          options: def.options,
+        };
+        const match = existing.find((cmd) => cmd.name === def.name);
+        if (match) {
+          await guild.commands.edit(match.id, payload);
+        } else {
+          await guild.commands.create(payload);
         }
       }
     }
