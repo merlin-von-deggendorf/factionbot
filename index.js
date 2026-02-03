@@ -19,10 +19,11 @@ const CATEGORY_NAMES = [
 ];
 
 const normalize = (value) => value.toLowerCase();
-const buildChannelName = (factionName) => `${factionName} ~ 0`;
-const buildMemberRoleName = (factionName) => `${factionName} ~ member`;
-const buildLeaderRoleName = (factionName) => `${factionName} ~ leader`;
-const buildRequestRoleName = (factionName) => `${factionName} ~ request`;
+const buildVanillaChannelName = (factionName) => factionName;
+const buildPublicVoiceChannelName = (factionName) => `${factionName} | 0`;
+const buildMemberRoleName = (factionName) => `${factionName} | member`;
+const buildLeaderRoleName = (factionName) => `${factionName} | leader`;
+const buildRequestRoleName = (factionName) => `${factionName} | request`;
 
 const client = botClient.getClient();
 
@@ -56,9 +57,9 @@ await botClient.createSlashCommand(
     }
 
     const factionName = interaction.options.getString("name", true);
-    if (factionName.includes("~")) {
+    if (factionName.includes("|")) {
       await interaction.reply({
-        content: "Faction name cannot include the '~' character.",
+        content: "Faction name cannot include the '|' character.",
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -69,15 +70,25 @@ await botClient.createSlashCommand(
     const guild = interaction.guild;
     if (guild) {
       const channels = await guild.channels.fetch();
-      const prefix = `${factionName} ~`.toLowerCase();
+      const publicVoiceName = normalize(buildPublicVoiceChannelName(factionName));
+      const vanillaName = normalize(buildVanillaChannelName(factionName));
 
-      const existing = channels.find(
-        (channel) =>
-          channel &&
-          channel.parent &&
-          CATEGORY_NAMES.includes(normalize(channel.parent.name)) &&
-          channel.name.toLowerCase().startsWith(prefix)
-      );
+      const existing = channels.find((channel) => {
+        if (!channel || !channel.parent) return false;
+        const parentName = normalize(channel.parent.name);
+        const channelName = normalize(channel.name);
+        if (parentName === "public voice") {
+          return channelName === publicVoiceName;
+        }
+        if (
+          parentName === "public chat" ||
+          parentName === "private chat" ||
+          parentName === "private voice"
+        ) {
+          return channelName === vanillaName;
+        }
+        return false;
+      });
 
       if (existing) {
         await interaction.editReply({
@@ -129,28 +140,26 @@ await botClient.createSlashCommand(
       await guild.roles.create({ name: buildLeaderRoleName(factionName) });
       await guild.roles.create({ name: buildRequestRoleName(factionName) });
 
-      const channelName = buildChannelName(factionName);
-
       await guild.channels.create({
-        name: channelName,
+        name: buildVanillaChannelName(factionName),
         type: ChannelType.GuildText,
         parent: categories["public chat"].id,
       });
 
       await guild.channels.create({
-        name: channelName,
+        name: buildVanillaChannelName(factionName),
         type: ChannelType.GuildText,
         parent: categories["private chat"].id,
       });
 
       await guild.channels.create({
-        name: channelName,
+        name: buildPublicVoiceChannelName(factionName),
         type: ChannelType.GuildVoice,
         parent: categories["public voice"].id,
       });
 
       await guild.channels.create({
-        name: channelName,
+        name: buildVanillaChannelName(factionName),
         type: ChannelType.GuildVoice,
         parent: categories["private voice"].id,
       });
@@ -319,15 +328,25 @@ await botClient.createSlashCommand(
     }
 
     const channels = await guild.channels.fetch();
-    const channelName = normalize(buildChannelName(factionName));
+    const vanillaName = normalize(buildVanillaChannelName(factionName));
+    const publicVoiceName = normalize(buildPublicVoiceChannelName(factionName));
 
-    const channelsToDelete = channels.filter(
-      (channel) =>
-        channel &&
-        channel.parent &&
-        CATEGORY_NAMES.includes(normalize(channel.parent.name)) &&
-        normalize(channel.name) === channelName
-    );
+    const channelsToDelete = channels.filter((channel) => {
+      if (!channel || !channel.parent) return false;
+      const parentName = normalize(channel.parent.name);
+      const channelName = normalize(channel.name);
+      if (parentName === "public voice") {
+        return channelName === publicVoiceName;
+      }
+      if (
+        parentName === "public chat" ||
+        parentName === "private chat" ||
+        parentName === "private voice"
+      ) {
+        return channelName === vanillaName;
+      }
+      return false;
+    });
 
     for (const channel of channelsToDelete.values()) {
       await channel.delete();
