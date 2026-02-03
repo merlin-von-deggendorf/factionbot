@@ -15,5 +15,4 @@ client.on("messageCreate", async (message) => {
   }
 });
 
-await dbClient.connect();
 await botClient.connect();

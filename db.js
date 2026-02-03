@@ -4,10 +4,6 @@ class DbClient {
   constructor() {
     this.mongoUri = process.env.MONGODB_URI;
     this.mongoDbName = process.env.MONGODB_DB;
-    if (!this.mongoUri) {
-      console.error("Missing MONGODB_URI in environment.");
-      process.exit(1);
-    }
 
     this.mongo = new MongoClient(this.mongoUri, {
       serverSelectionTimeoutMS: 5000,

@@ -13,10 +13,6 @@ class BotClient {
   }
 
   async connect() {
-    if (!this.token) {
-      console.error("Missing DISCORD_TOKEN in environment.");
-      process.exit(1);
-    }
     await this.client.login(this.token);
   }
 
