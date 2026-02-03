@@ -29,10 +29,11 @@ class BotClient {
   }
 
   async createSlashCommand(name, behaviour, description = "Command") {
-    this.commands.set(name, behaviour);
+    const commandName = name.toLowerCase();
+    this.commands.set(commandName, behaviour);
     await this.readyPromise;
     await this.client.application.commands.create({
-      name,
+      name: commandName,
       description,
     });
   }
