@@ -25,7 +25,7 @@ await botClient.createSlashCommand("help", async (interaction) => {
 });
 
 await botClient.createSlashCommand(
-  "createFaction",
+  "createfaction",
   async (interaction) => {
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
