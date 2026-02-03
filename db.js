@@ -10,23 +10,24 @@ const mongo = new MongoClient(mongoUri, {
   serverSelectionTimeoutMS: 5000,
 });
 
-let db;
+await mongo.connect();
+const db = mongo.db(mongoDbName);
+await db.command({ ping: 1 });
+console.log(`MongoDB connected: ${db.databaseName}`);
 
-export async function connectDb() {
-  if (db) return db;
-  await mongo.connect();
-  db = mongo.db(mongoDbName);
-  await db.command({ ping: 1 });
-  console.log(`MongoDB connected: ${db.databaseName}`);
-  return db;
-}
+const shutdown = async () => {
+  try {
+    await mongo.close();
+    console.log("MongoDB disconnected.");
+  } catch (error) {
+    console.error("MongoDB disconnect error:", error);
+  } finally {
+    process.exit(0);
+  }
+};
 
-export async function closeDb() {
-  if (!db) return;
-  await mongo.close();
-  db = undefined;
-  console.log("MongoDB disconnected.");
-}
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
 
 export async function storeMessage(message) {
   const doc = {
@@ -45,3 +46,5 @@ export async function storeMessage(message) {
 
   return db.collection("messages").insertOne(doc);
 }
+
+export default db;
