@@ -36,6 +36,29 @@ await botClient.createSlashCommand(
       });
       return;
     }
+
+    const guild = interaction.guild;
+    if (guild) {
+      const channels = await guild.channels.fetch();
+      const prefix = `${factionName}|`.toLowerCase();
+      const existing = channels.find(
+        (channel) =>
+          channel &&
+          channel.parent &&
+          ["public chat", "public voice", "private chat", "private voice"].includes(
+            channel.parent.name.toLowerCase()
+          ) &&
+          channel.name.toLowerCase().startsWith(prefix)
+      );
+
+      if (existing) {
+        await interaction.reply({
+          content: "A faction channel with that name already exists.",
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+    }
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("createFaction_ok")
