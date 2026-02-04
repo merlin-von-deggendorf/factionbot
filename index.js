@@ -298,6 +298,7 @@ await botClient.createSlashCommand(
             PermissionsBitField.Flags.ViewChannel,
             PermissionsBitField.Flags.SendMessages,
             PermissionsBitField.Flags.ReadMessageHistory,
+            PermissionsBitField.Flags.ManageMessages,
           ],
         },
       ];
@@ -322,12 +323,17 @@ await botClient.createSlashCommand(
             PermissionsBitField.Flags.ViewChannel,
             PermissionsBitField.Flags.SendMessages,
             PermissionsBitField.Flags.ReadMessageHistory,
+            PermissionsBitField.Flags.ManageMessages,
           ],
         },
       ];
 
       const publicVoiceOverwrites = [
         { id: jailedRole.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+        {
+          id: leaderRole.id,
+          allow: [PermissionsBitField.Flags.MoveMembers],
+        },
       ];
 
       const privateVoiceOverwrites = [
@@ -350,6 +356,7 @@ await botClient.createSlashCommand(
             PermissionsBitField.Flags.ViewChannel,
             PermissionsBitField.Flags.Connect,
             PermissionsBitField.Flags.Speak,
+            PermissionsBitField.Flags.MoveMembers,
           ],
         },
       ];
