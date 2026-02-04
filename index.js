@@ -9,14 +9,12 @@ import botClient from "./bot.js";
 
 const CATEGORY_NAMES = [
   "public chat",
-  "public voice",
   "private chat",
   "private voice",
 ];
 
 const normalize = (value) => value.toLowerCase();
 const buildVanillaChannelName = (factionName) => factionName;
-const buildPublicVoiceChannelName = (factionName) => factionName;
 const buildMemberRoleName = (factionName) => `${factionName} | member`;
 const buildLeaderRoleName = (factionName) => `${factionName} | leader`;
 const buildRequestRoleName = (factionName) => `${factionName} | request`;
@@ -192,16 +190,12 @@ await botClient.createSlashCommand(
     const guild = interaction.guild;
     if (guild) {
       const channels = await guild.channels.fetch();
-      const publicVoiceName = normalize(buildPublicVoiceChannelName(factionName));
       const vanillaName = normalize(buildVanillaChannelName(factionName));
 
       const existing = channels.find((channel) => {
         if (!channel || !channel.parent) return false;
         const parentName = normalize(channel.parent.name);
         const channelName = normalize(channel.name);
-        if (parentName === "public voice") {
-          return channelName === publicVoiceName;
-        }
         if (
           parentName === "public chat" ||
           parentName === "private chat" ||
@@ -334,14 +328,6 @@ await botClient.createSlashCommand(
         },
       ];
 
-      const publicVoiceOverwrites = [
-        { id: jailedRole.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-        {
-          id: leaderRole.id,
-          allow: [PermissionsBitField.Flags.MoveMembers],
-        },
-      ];
-
       const privateVoiceOverwrites = [
         {
           id: guild.roles.everyone.id,
@@ -379,13 +365,6 @@ await botClient.createSlashCommand(
         type: ChannelType.GuildText,
         parent: categories["private chat"].id,
         permissionOverwrites: privateChatOverwrites,
-      });
-
-      await guild.channels.create({
-        name: buildPublicVoiceChannelName(factionName),
-        type: ChannelType.GuildVoice,
-        parent: categories["public voice"].id,
-        permissionOverwrites: publicVoiceOverwrites,
       });
 
       await guild.channels.create({
@@ -1162,15 +1141,11 @@ await botClient.createSlashCommand(
 
     const channels = await guild.channels.fetch();
     const vanillaName = normalize(buildVanillaChannelName(factionName));
-    const publicVoiceName = normalize(buildPublicVoiceChannelName(factionName));
 
     const channelsToDelete = channels.filter((channel) => {
       if (!channel || !channel.parent) return false;
       const parentName = normalize(channel.parent.name);
       const channelName = normalize(channel.name);
-      if (parentName === "public voice") {
-        return channelName === publicVoiceName;
-      }
       if (
         parentName === "public chat" ||
         parentName === "private chat" ||
