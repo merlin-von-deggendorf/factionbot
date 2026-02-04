@@ -605,8 +605,12 @@ await botClient.createSlashCommand(
 
     const roles = await guild.roles.fetch();
     const requestRoleName = normalize(buildRequestRoleName(factionName));
+    const leaderRoleName = normalize(buildLeaderRoleName(factionName));
     const requestRole = roles.find(
       (role) => normalize(role.name) === requestRoleName
+    );
+    const leaderRole = roles.find(
+      (role) => normalize(role.name) === leaderRoleName
     );
 
     if (!requestRole) {
@@ -619,6 +623,30 @@ await botClient.createSlashCommand(
 
     try {
       await member.roles.add(requestRole);
+
+      const channels = await guild.channels.fetch();
+      const factionChatCategory = channels.find(
+        (channel) =>
+          channel?.type === ChannelType.GuildCategory &&
+          normalize(channel.name) === "faction chat"
+      );
+      const factionChatChannel = channels.find(
+        (channel) =>
+          channel?.type === ChannelType.GuildText &&
+          channel.parentId === factionChatCategory?.id &&
+          normalize(channel.name) === normalize(factionName)
+      );
+
+      if (factionChatChannel && leaderRole) {
+        await factionChatChannel.send({
+          content: `${leaderRole} ${member} requested to join **${factionName}**.`,
+          allowedMentions: {
+            roles: [leaderRole.id],
+            users: [member.id],
+          },
+        });
+      }
+
       await interaction.reply({
         content: `Request sent for ${factionName}.`,
         flags: MessageFlags.Ephemeral,
