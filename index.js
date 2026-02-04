@@ -26,6 +26,78 @@ const REQUEST_SUFFIX = " | request";
 
 const client = botClient.getClient();
 
+const buildFactionBotExplanation = () => {
+  return [
+    [
+      "**Factionbot - How It Works**",
+      "",
+      "Factionbot manages factions using Discord categories, channels, and roles.",
+      "There is currently no database logic for factions; the roles/channels are the source of truth.",
+    ].join("\n"),
+    [
+      "**Setup**",
+      "",
+      "1. Run `/setup` (Manage Server) once.",
+      "2. It ensures these categories exist: public chat, public voice, private chat, private voice.",
+      "3. It ensures a role named `jailed` exists.",
+    ].join("\n"),
+    [
+      "**Roles (Per Faction)**",
+      "",
+      "For a faction named `MyFaction`, the bot creates:",
+      "- `MyFaction | request` (can talk in public chat only)",
+      "- `MyFaction | member` (full member access)",
+      "- `MyFaction | leader` (leader access + moderation powers)",
+      "",
+      "Rule: a user can only have ONE faction role at a time (request/member/leader). When a new faction role is added, other faction roles are removed automatically.",
+      "",
+      "`jailed` overrides everything: jailed users cannot see any faction channels (public or private).",
+    ].join("\n"),
+    [
+      "**Channels (Per Faction)**",
+      "",
+      "When you run `/createfaction name:<FactionName>` (Manage Server), the bot creates 4 channels (one under each category):",
+      "- public chat: `factionname` (text)",
+      "- private chat: `factionname` (text)",
+      "- public voice: `factionname` (voice)",
+      "- private voice: `factionname` (voice)",
+      "",
+      "Faction name rules: alphanumeric only (A-Z, 0-9), no spaces, no symbols.",
+    ].join("\n"),
+    [
+      "**Permissions Model**",
+      "",
+      "public chat: request/member/leader can view + write; jailed cannot view.",
+      "private chat: member/leader can view + write; everyone else cannot view; jailed cannot view.",
+      "public voice: everyone can see/join by default; jailed cannot view.",
+      "private voice: member/leader can view + connect + speak; everyone else cannot view; jailed cannot view.",
+      "",
+      "Leader powers:",
+      "- Can delete messages in faction text channels.",
+      "- Can move/kick members from faction voice channels.",
+    ].join("\n"),
+    [
+      "**Commands**",
+      "",
+      "/setup - Create required categories + jailed role.",
+      "/createfaction - Create faction roles + channels + permissions.",
+      "/joinfaction - Request to join a faction (gives `| request`).",
+      "/approverequest - Leaders approve a user's request (request -> member).",
+      "/leavefaction - Removes all faction roles from you.",
+      "/delete - Deletes a faction's channels + roles.",
+      "/addleader - (Manage Server) assign a leader role to a member.",
+      "/removeleader - (Manage Server) remove a leader role from a member.",
+      "/removemember - (Leader) remove member status from a user in your faction.",
+      "/countfactions - Prints a count of faction roles.",
+    ].join("\n"),
+    [
+      "**Admin Message Command**",
+      "",
+      "Use `!explainfactionbot` (Manage Server) to post this documentation again.",
+    ].join("\n"),
+  ].join("\n\n");
+};
+
 const isFactionRoleName = (name) => {
   const lower = normalize(name);
   return (
@@ -109,8 +181,22 @@ client.once("clientReady", () => {
 
 client.on("messageCreate", async (message) => {
   if (message.author.bot) return;
-  if (message.content.toLowerCase() === "hello") {
-    message.channel.send("Hello worldsssss!");
+
+  const content = message.content.trim();
+
+
+  if (content === "!explainfactionbot") {
+    const canManage =
+      message.member?.permissions?.has(PermissionsBitField.Flags.ManageGuild) ??
+      false;
+
+    if (!canManage) {
+      await message.reply("You need Manage Server permission to run this.");
+      return;
+    }
+
+    const explanation = buildFactionBotExplanation();
+    await botClient.sendLongMessage(message.channel, explanation);
   }
 });
 
