@@ -8,8 +8,8 @@ import {
 import botClient from "./bot.js";
 
 const CATEGORY_NAMES = [
-  "public chat",
-  "private",
+  "faction chat",
+  "faction intern",
 ];
 
 const normalize = (value) => value.toLowerCase();
@@ -196,8 +196,8 @@ await botClient.createSlashCommand(
         const parentName = normalize(channel.parent.name);
         const channelName = normalize(channel.name);
         if (
-          parentName === "public chat" ||
-          parentName === "private"
+          parentName === "faction chat" ||
+          parentName === "faction intern"
         ) {
           return channelName === vanillaName;
         }
@@ -354,21 +354,21 @@ await botClient.createSlashCommand(
       await guild.channels.create({
         name: buildVanillaChannelName(factionName),
         type: ChannelType.GuildText,
-        parent: categories["public chat"].id,
+        parent: categories["faction chat"].id,
         permissionOverwrites: publicChatOverwrites,
       });
 
       await guild.channels.create({
         name: buildVanillaChannelName(factionName),
         type: ChannelType.GuildText,
-        parent: categories.private.id,
+        parent: categories["faction intern"].id,
         permissionOverwrites: privateCategoryOverwrites,
       });
 
       await guild.channels.create({
         name: buildVanillaChannelName(factionName),
         type: ChannelType.GuildVoice,
-        parent: categories.private.id,
+        parent: categories["faction intern"].id,
         permissionOverwrites: privateVoiceOverwrites,
       });
     }
@@ -1145,6 +1145,8 @@ await botClient.createSlashCommand(
       const parentName = normalize(channel.parent.name);
       const channelName = normalize(channel.name);
       if (
+        parentName === "faction chat" ||
+        parentName === "faction intern" ||
         parentName === "public chat" ||
         parentName === "private" ||
         parentName === "private chat" ||
