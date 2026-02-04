@@ -9,8 +9,7 @@ import botClient from "./bot.js";
 
 const CATEGORY_NAMES = [
   "public chat",
-  "private chat",
-  "private voice",
+  "private",
 ];
 
 const normalize = (value) => value.toLowerCase();
@@ -198,8 +197,7 @@ await botClient.createSlashCommand(
         const channelName = normalize(channel.name);
         if (
           parentName === "public chat" ||
-          parentName === "private chat" ||
-          parentName === "private voice"
+          parentName === "private"
         ) {
           return channelName === vanillaName;
         }
@@ -303,7 +301,7 @@ await botClient.createSlashCommand(
         },
       ];
 
-      const privateChatOverwrites = [
+      const privateCategoryOverwrites = [
         {
           id: guild.roles.everyone.id,
           deny: [PermissionsBitField.Flags.ViewChannel],
@@ -363,14 +361,14 @@ await botClient.createSlashCommand(
       await guild.channels.create({
         name: buildVanillaChannelName(factionName),
         type: ChannelType.GuildText,
-        parent: categories["private chat"].id,
-        permissionOverwrites: privateChatOverwrites,
+        parent: categories.private.id,
+        permissionOverwrites: privateCategoryOverwrites,
       });
 
       await guild.channels.create({
         name: buildVanillaChannelName(factionName),
         type: ChannelType.GuildVoice,
-        parent: categories["private voice"].id,
+        parent: categories.private.id,
         permissionOverwrites: privateVoiceOverwrites,
       });
     }
@@ -1148,6 +1146,7 @@ await botClient.createSlashCommand(
       const channelName = normalize(channel.name);
       if (
         parentName === "public chat" ||
+        parentName === "private" ||
         parentName === "private chat" ||
         parentName === "private voice"
       ) {
