@@ -23,6 +23,7 @@ const buildRequestRoleName = (factionName) => `${factionName} | request`;
 const MEMBER_SUFFIX = " | member";
 const LEADER_SUFFIX = " | leader";
 const REQUEST_SUFFIX = " | request";
+const FACTION_MANAGER_ROLE_NAME = "factionmanager";
 
 const client = botClient.getClient();
 
@@ -105,6 +106,21 @@ const isFactionRoleName = (name) => {
     lower.endsWith(LEADER_SUFFIX) ||
     lower.endsWith(REQUEST_SUFFIX)
   );
+};
+
+const hasFactionManagerRole = (member) => {
+  return (
+    member?.roles?.cache?.some(
+      (role) => normalize(role.name) === FACTION_MANAGER_ROLE_NAME
+    ) ?? false
+  );
+};
+
+const canManageFactions = (interaction) => {
+  const hasManageGuild =
+    interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageGuild) ??
+    false;
+  return hasManageGuild || hasFactionManagerRole(interaction.member);
 };
 
 const getFactionFromRoleName = (name) => {
@@ -229,14 +245,12 @@ await botClient.connect();
 await botClient.createSlashCommand(
   "createfaction",
   async (interaction) => {
-    const canManage =
-      interaction.memberPermissions?.has(
-        PermissionsBitField.Flags.ManageGuild
-      ) ?? false;
+    const canManage = canManageFactions(interaction);
 
     if (!canManage) {
       await interaction.reply({
-        content: "You need Manage Server permission to run this.",
+        content:
+          "You need Manage Server permission or the factionmanager role to run this.",
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -523,9 +537,19 @@ await botClient.createSlashCommand(
     const jailedRole = roles.find(
       (role) => normalize(role.name) === "jailed"
     );
-    let createdRole = null;
+    const factionManagerRole = roles.find(
+      (role) => normalize(role.name) === FACTION_MANAGER_ROLE_NAME
+    );
+    const createdRoles = [];
+
     if (!jailedRole) {
-      createdRole = await guild.roles.create({ name: "jailed" });
+      await guild.roles.create({ name: "jailed" });
+      createdRoles.push("jailed");
+    }
+
+    if (!factionManagerRole) {
+      await guild.roles.create({ name: FACTION_MANAGER_ROLE_NAME });
+      createdRoles.push(FACTION_MANAGER_ROLE_NAME);
     }
 
     await interaction.reply({
@@ -538,9 +562,9 @@ await botClient.createSlashCommand(
       flags: MessageFlags.Ephemeral,
     });
 
-    if (createdRole) {
+    if (createdRoles.length > 0) {
       await interaction.followUp({
-        content: "Created role: jailed",
+        content: `Created roles: ${createdRoles.join(", ")}`,
         flags: MessageFlags.Ephemeral,
       });
     }
@@ -551,14 +575,12 @@ await botClient.createSlashCommand(
 await botClient.createSlashCommand(
   "addleader",
   async (interaction) => {
-    const canManage =
-      interaction.memberPermissions?.has(
-        PermissionsBitField.Flags.ManageGuild
-      ) ?? false;
+    const canManage = canManageFactions(interaction);
 
     if (!canManage) {
       await interaction.reply({
-        content: "You need Manage Server permission to run this.",
+        content:
+          "You need Manage Server permission or the factionmanager role to run this.",
         flags: MessageFlags.Ephemeral,
       });
       return;
@@ -912,14 +934,12 @@ await botClient.createSlashCommand(
 await botClient.createSlashCommand(
   "removeleader",
   async (interaction) => {
-    const canManage =
-      interaction.memberPermissions?.has(
-        PermissionsBitField.Flags.ManageGuild
-      ) ?? false;
+    const canManage = canManageFactions(interaction);
 
     if (!canManage) {
       await interaction.reply({
-        content: "You need Manage Server permission to run this.",
+        content:
+          "You need Manage Server permission or the factionmanager role to run this.",
         flags: MessageFlags.Ephemeral,
       });
       return;
