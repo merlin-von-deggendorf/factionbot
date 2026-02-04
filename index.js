@@ -1070,7 +1070,7 @@ await botClient.createSlashCommand(
 await botClient.createSlashCommand(
   "countfactions",
   async (interaction) => {
-    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await interaction.deferReply();
 
     const guild = interaction.guild;
     if (!guild) {
