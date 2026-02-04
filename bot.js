@@ -203,23 +203,6 @@ class BotClient {
     return created;
   }
 
-  async sendLongMessage(channel, content) {
-    const max = 1900;
-    let remaining = content;
-
-    while (remaining.length > max) {
-      let cut = remaining.lastIndexOf("\n\n", max);
-      if (cut < 800) cut = remaining.lastIndexOf("\n", max);
-      if (cut < 1) cut = max;
-
-      const part = remaining.slice(0, cut).trim();
-      if (part.length > 0) await channel.send(part);
-      remaining = remaining.slice(cut).trim();
-    }
-
-    if (remaining.length > 0) await channel.send(remaining);
-  }
-
   getClient() {
     return this.client;
   }
