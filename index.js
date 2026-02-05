@@ -169,27 +169,10 @@ const updateFactionChatCounts = async (guild, counts) => {
   );
   if (!factionChatCategory) {
     console.warn("Faction chat category not found.");
-    return { updated: 0, skipped: 0, failed: 0 };
+    return;
   }
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-  const renameIfNeeded = async (channel, desiredName) => {
-    if (channel.name === desiredName) return;
-    try {
-      await channel.setName(desiredName);
-      return "updated";
-    } catch (error) {
-      console.error(
-        `Failed to rename channel ${channel.id} to ${desiredName}:`,
-        error
-      );
-      return "failed";
-    }
-  };
-
-  let updated = 0;
-  let failed = 0;
-  let skipped = 0;
 
   for (const [faction, c] of counts.entries()) {
     const desiredName = buildPublicChatNameWithCount(faction, c.total);
@@ -200,17 +183,26 @@ const updateFactionChatCounts = async (guild, counts) => {
         matchesPublicChatName(ch.name, faction)
     );
     if (!channel) {
-      skipped += 1;
+      console.warn(`No faction chat channel found for ${faction}.`);
       continue;
     }
 
-    const result = await renameIfNeeded(channel, desiredName);
-    if (result === "updated") updated += 1;
-    else if (result === "failed") failed += 1;
-    else skipped += 1;
-      await sleep(250);
+    if (channel.name === desiredName) {
+      console.log(`Channel ok: ${channel.name}`);
+      continue;
+    }
+
+    try {
+      await channel.setName(desiredName);
+      console.log(`Renamed channel: ${channel.name} -> ${desiredName}`);
+    } catch (error) {
+      console.error(
+        `Failed to rename channel ${channel.id} to ${desiredName}:`,
+        error
+      );
+    }
+    await sleep(250);
   }
-  return { updated, skipped, failed };
 };
 
 const updateSingleFactionChatCountFromCache = async (guild, factionName) => {
@@ -1296,13 +1288,7 @@ await botClient.createSlashCommand(
     });
 
     try {
-      const { updated, skipped, failed } = await updateFactionChatCounts(
-        guild,
-        counts
-      );
-      console.log(
-        `Faction chat rename: updated ${updated}, skipped ${skipped}, failed ${failed}.`
-      );
+      await updateFactionChatCounts(guild, counts);
     } catch (error) {
       console.error("Failed to update faction chat counts:", error);
     }
