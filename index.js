@@ -263,6 +263,15 @@ const updateSingleFactionChatCountFromCache = async (guild, factionName) => {
   }
 };
 
+const fetchChannelsWithFallback = async (guild) => {
+  try {
+    return await guild.channels.fetch();
+  } catch (error) {
+    console.warn("Channel fetch failed, using cache:", error);
+    return guild.channels.cache;
+  }
+};
+
 client.once("clientReady", () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
@@ -803,7 +812,7 @@ await botClient.createSlashCommand(
     try {
       await member.roles.add(requestRole);
 
-      const channels = await guild.channels.fetch();
+      const channels = await fetchChannelsWithFallback(guild);
       const factionChatCategory = channels.find(
         (channel) =>
           channel?.type === ChannelType.GuildCategory &&
@@ -1001,6 +1010,26 @@ await botClient.createSlashCommand(
         content: `Approved ${member.user.tag} for ${factionName}.`,
         flags: MessageFlags.Ephemeral,
       });
+
+      const channels = await fetchChannelsWithFallback(interaction.guild);
+      const factionChatCategory = channels.find(
+        (channel) =>
+          channel?.type === ChannelType.GuildCategory &&
+          normalize(channel.name) === "faction chat"
+      );
+      const factionChatChannel = channels.find(
+        (channel) =>
+          channel?.type === ChannelType.GuildText &&
+          channel.parentId === factionChatCategory?.id &&
+          matchesPublicChatName(channel.name, factionName)
+      );
+
+      if (factionChatChannel) {
+        await factionChatChannel.send({
+          content: `${member} was approved for **${factionName}**.`,
+          allowedMentions: { users: [member.id] },
+        });
+      }
     } catch (error) {
       await interaction.reply({
         content:
