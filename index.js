@@ -71,7 +71,7 @@ const matchesPublicChatName = (channelName, factionName) => {
 };
 
 const buildPublicChatNameWithCount = (factionName, count) => {
-  return `${factionName}${PUBLIC_CHAT_SEPARATOR}${count}`;
+  return `${normalize(factionName)}${PUBLIC_CHAT_SEPARATOR}${count}`;
 };
 
 const countFactionRoles = async (guild) => {
