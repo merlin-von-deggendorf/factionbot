@@ -167,20 +167,29 @@ const updateFactionChatCounts = async (guild, counts) => {
       channel?.type === ChannelType.GuildCategory &&
       normalize(channel.name) === "faction chat"
   );
-  if (!factionChatCategory) return;
+  if (!factionChatCategory) {
+    console.warn("Faction chat category not found.");
+    return { updated: 0, skipped: 0, failed: 0 };
+  }
 
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const renameIfNeeded = async (channel, desiredName) => {
     if (channel.name === desiredName) return;
     try {
       await channel.setName(desiredName);
+      return "updated";
     } catch (error) {
       console.error(
         `Failed to rename channel ${channel.id} to ${desiredName}:`,
         error
       );
+      return "failed";
     }
   };
+
+  let updated = 0;
+  let failed = 0;
+  let skipped = 0;
 
   for (const [faction, c] of counts.entries()) {
     const desiredName = buildPublicChatNameWithCount(faction, c.total);
@@ -190,11 +199,18 @@ const updateFactionChatCounts = async (guild, counts) => {
         ch.parentId === factionChatCategory.id &&
         matchesPublicChatName(ch.name, faction)
     );
-    if (channel) {
-      await renameIfNeeded(channel, desiredName);
-      await sleep(250);
+    if (!channel) {
+      skipped += 1;
+      continue;
     }
+
+    const result = await renameIfNeeded(channel, desiredName);
+    if (result === "updated") updated += 1;
+    else if (result === "failed") failed += 1;
+    else skipped += 1;
+      await sleep(250);
   }
+  return { updated, skipped, failed };
 };
 
 const updateSingleFactionChatCountFromCache = async (guild, factionName) => {
@@ -1280,7 +1296,14 @@ await botClient.createSlashCommand(
     });
 
     try {
-      await updateFactionChatCounts(guild, counts);
+      const { updated, skipped, failed } = await updateFactionChatCounts(
+        guild,
+        counts
+      );
+      await interaction.followUp({
+        content: `Channel rename results: updated ${updated}, skipped ${skipped}, failed ${failed}.`,
+        flags: MessageFlags.Ephemeral,
+      });
     } catch (error) {
       console.error("Failed to update faction chat counts:", error);
     }
@@ -1388,9 +1411,14 @@ setInterval(async () => {
     for (const guild of guilds) {
       const { counts } = await getFactionCountsWithFallback(guild);
       if (counts.size === 0) continue;
-      await updateFactionChatCounts(guild, counts);
+      const result = await updateFactionChatCounts(guild, counts);
+      if (result.failed > 0) {
+        console.warn(
+          `Periodic rename had failures: ${result.failed} (updated ${result.updated}, skipped ${result.skipped})`
+        );
+      }
     }
   } catch (error) {
     console.error("Periodic faction count update failed:", error);
   }
-}, 5*60 * 1000);
+}, 5 * 60 * 1000);
