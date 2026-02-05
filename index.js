@@ -1276,3 +1276,7 @@ await botClient.createSlashCommand(
 );
 
 await botClient.syncCommands();
+
+setInterval(() => {
+  // periodic task placeholder
+}, 5 * 60 * 1000);
