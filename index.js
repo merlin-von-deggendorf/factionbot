@@ -127,6 +127,67 @@ const countFactionRolesFromCache = async (guild) => {
   return factions;
 };
 
+const getFactionCountsWithFallback = async (guild) => {
+  let counts;
+  let usedCacheOnly = false;
+  try {
+    const fullCountPromise = countFactionRoles(guild);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("COUNT_TIMEOUT")), 6000)
+    );
+    counts = await Promise.race([fullCountPromise, timeoutPromise]);
+  } catch (error) {
+    if (
+      error?.name === "GatewayRateLimitError" ||
+      error?.message === "COUNT_TIMEOUT"
+    ) {
+      counts = await countFactionRolesFromCache(guild);
+      usedCacheOnly = true;
+    } else {
+      throw error;
+    }
+  }
+  return { counts, usedCacheOnly };
+};
+
+const formatFactionCounts = (counts) => {
+  const lines = [];
+  for (const [faction, c] of counts.entries()) {
+    lines.push(
+      `${faction}: total ${c.total} (member ${c.member}, leader ${c.leader}, request ${c.request})`
+    );
+  }
+  return lines;
+};
+
+const updateFactionChatCounts = async (guild, counts) => {
+  const channels = await guild.channels.fetch();
+  const factionChatCategory = channels.find(
+    (channel) =>
+      channel?.type === ChannelType.GuildCategory &&
+      normalize(channel.name) === "faction chat"
+  );
+  if (!factionChatCategory) return;
+
+  const updates = [];
+  for (const [faction, c] of counts.entries()) {
+    const desiredName = buildPublicChatNameWithCount(faction, c.total);
+    const channel = channels.find(
+      (ch) =>
+        ch?.type === ChannelType.GuildText &&
+        ch.parentId === factionChatCategory.id &&
+        matchesPublicChatName(ch.name, faction)
+    );
+    if (channel && channel.name !== desiredName) {
+      updates.push(channel.setName(desiredName));
+    }
+  }
+
+  if (updates.length > 0) {
+    await Promise.all(updates);
+  }
+};
+
 client.once("clientReady", () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
@@ -1112,22 +1173,7 @@ await botClient.createSlashCommand(
       return;
     }
 
-    let counts;
-    let usedCacheOnly = false;
-    try {
-      const fullCountPromise = countFactionRoles(guild);
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("COUNT_TIMEOUT")), 6000)
-      );
-      counts = await Promise.race([fullCountPromise, timeoutPromise]);
-    } catch (error) {
-      if (error?.name === "GatewayRateLimitError" || error?.message === "COUNT_TIMEOUT") {
-        counts = await countFactionRolesFromCache(guild);
-        usedCacheOnly = true;
-      } else {
-        throw error;
-      }
-    }
+    const { counts, usedCacheOnly } = await getFactionCountsWithFallback(guild);
     if (counts.size === 0) {
       await interaction.editReply({
         content: "No faction roles found.",
@@ -1135,12 +1181,7 @@ await botClient.createSlashCommand(
       return;
     }
 
-    const lines = [];
-    for (const [faction, c] of counts.entries()) {
-      lines.push(
-        `${faction}: total ${c.total} (member ${c.member}, leader ${c.leader}, request ${c.request})`
-      );
-    }
+    const lines = formatFactionCounts(counts);
 
     await interaction.editReply({
       content: usedCacheOnly
@@ -1149,33 +1190,7 @@ await botClient.createSlashCommand(
     });
 
     try {
-      const channels = await guild.channels.fetch();
-      const factionChatCategory = channels.find(
-        (channel) =>
-          channel?.type === ChannelType.GuildCategory &&
-          normalize(channel.name) === "faction chat"
-      );
-      if (factionChatCategory) {
-        const updates = [];
-        for (const [faction, c] of counts.entries()) {
-          const desiredName = buildPublicChatNameWithCount(
-            faction,
-            c.total
-          );
-          const channel = channels.find(
-            (ch) =>
-              ch?.type === ChannelType.GuildText &&
-              ch.parentId === factionChatCategory.id &&
-              matchesPublicChatName(ch.name, faction)
-          );
-          if (channel && channel.name !== desiredName) {
-            updates.push(channel.setName(desiredName));
-          }
-        }
-        if (updates.length > 0) {
-          await Promise.all(updates);
-        }
-      }
+      await updateFactionChatCounts(guild, counts);
     } catch (error) {
       console.error("Failed to update faction chat counts:", error);
     }
