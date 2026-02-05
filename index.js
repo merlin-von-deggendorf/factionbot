@@ -193,8 +193,9 @@ const updateFactionChatCounts = async (guild, counts) => {
     }
 
     try {
+      const oldName = channel.name;
       await channel.setName(desiredName);
-      console.log(`Renamed channel: ${channel.name} -> ${desiredName}`);
+      console.log(`Renamed channel: ${oldName} -> ${desiredName}`);
     } catch (error) {
       console.error(
         `Failed to rename channel ${channel.id} to ${desiredName}:`,
@@ -1396,12 +1397,7 @@ setInterval(async () => {
     for (const guild of guilds) {
       const { counts } = await getFactionCountsWithFallback(guild);
       if (counts.size === 0) continue;
-      const result = await updateFactionChatCounts(guild, counts);
-      if (result.failed > 0) {
-        console.warn(
-          `Periodic rename had failures: ${result.failed} (updated ${result.updated}, skipped ${result.skipped})`
-        );
-      }
+      await updateFactionChatCounts(guild, counts);
     }
   } catch (error) {
     console.error("Periodic faction count update failed:", error);
