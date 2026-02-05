@@ -813,7 +813,7 @@ await botClient.createSlashCommand(
         (channel) =>
           channel?.type === ChannelType.GuildText &&
           channel.parentId === factionChatCategory?.id &&
-          normalize(channel.name) === normalize(factionName)
+          matchesPublicChatName(channel.name, factionName)
       );
 
       if (factionChatChannel && leaderRole) {
