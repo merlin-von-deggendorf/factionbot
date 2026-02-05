@@ -1300,10 +1300,9 @@ await botClient.createSlashCommand(
         guild,
         counts
       );
-      await interaction.followUp({
-        content: `Channel rename results: updated ${updated}, skipped ${skipped}, failed ${failed}.`,
-        flags: MessageFlags.Ephemeral,
-      });
+      console.log(
+        `Faction chat rename: updated ${updated}, skipped ${skipped}, failed ${failed}.`
+      );
     } catch (error) {
       console.error("Failed to update faction chat counts:", error);
     }
