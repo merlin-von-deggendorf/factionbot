@@ -200,6 +200,20 @@ client.on("guildMemberUpdate", async (oldMember, newMember) => {
     isFactionRoleName(role.name)
   );
 
+  const addedAnyRoles = newMember.roles.cache.filter(
+    (role) => !oldMember.roles.cache.has(role.id)
+  );
+  const removedAnyRoles = oldMember.roles.cache.filter(
+    (role) => !newMember.roles.cache.has(role.id)
+  );
+
+  if (addedAnyRoles.size > 0 || removedAnyRoles.size > 0) {
+    // placeholder for future notifications
+    console.log(
+      `Role change for ${newMember.user?.tag ?? newMember.id}: +${addedAnyRoles.size} -${removedAnyRoles.size}`
+    );
+  }
+
   const addedRoles = newFactionRoles.filter(
     (role) => !oldFactionRoles.has(role.id)
   );
