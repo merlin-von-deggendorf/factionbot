@@ -169,7 +169,19 @@ const updateFactionChatCounts = async (guild, counts) => {
   );
   if (!factionChatCategory) return;
 
-  const updates = [];
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const renameIfNeeded = async (channel, desiredName) => {
+    if (channel.name === desiredName) return;
+    try {
+      await channel.setName(desiredName);
+    } catch (error) {
+      console.error(
+        `Failed to rename channel ${channel.id} to ${desiredName}:`,
+        error
+      );
+    }
+  };
+
   for (const [faction, c] of counts.entries()) {
     const desiredName = buildPublicChatNameWithCount(faction, c.total);
     const channel = channels.find(
@@ -178,13 +190,10 @@ const updateFactionChatCounts = async (guild, counts) => {
         ch.parentId === factionChatCategory.id &&
         matchesPublicChatName(ch.name, faction)
     );
-    if (channel && channel.name !== desiredName) {
-      updates.push(channel.setName(desiredName));
+    if (channel) {
+      await renameIfNeeded(channel, desiredName);
+      await sleep(250);
     }
-  }
-
-  if (updates.length > 0) {
-    await Promise.all(updates);
   }
 };
 
@@ -223,8 +232,14 @@ const updateSingleFactionChatCountFromCache = async (guild, factionName) => {
 
   if (!channel) return;
   const desiredName = buildPublicChatNameWithCount(factionName, total);
-  if (channel.name !== desiredName) {
+  if (channel.name === desiredName) return;
+  try {
     await channel.setName(desiredName);
+  } catch (error) {
+    console.error(
+      `Failed to rename channel ${channel.id} to ${desiredName}:`,
+      error
+    );
   }
 };
 
