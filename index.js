@@ -160,6 +160,17 @@ const formatFactionCounts = (counts) => {
   return lines;
 };
 
+const renameChannelWithTimeout = async (
+  channel,
+  desiredName,
+  timeoutMs = 60000
+) => {
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("RENAME_TIMEOUT")), timeoutMs)
+  );
+  return Promise.race([channel.setName(desiredName), timeout]);
+};
+
 const updateFactionChatCounts = async (guild, counts) => {
   const channels = await guild.channels.fetch();
   const factionChatCategory = channels.find(
@@ -194,7 +205,7 @@ const updateFactionChatCounts = async (guild, counts) => {
 
     try {
       const oldName = channel.name;
-      await channel.setName(desiredName);
+      await renameChannelWithTimeout(channel, desiredName);
       console.log(`Renamed channel: ${oldName} -> ${desiredName}`);
     } catch (error) {
       console.error(
@@ -243,7 +254,7 @@ const updateSingleFactionChatCountFromCache = async (guild, factionName) => {
   const desiredName = buildPublicChatNameWithCount(factionName, total);
   if (channel.name === desiredName) return;
   try {
-    await channel.setName(desiredName);
+    await renameChannelWithTimeout(channel, desiredName);
   } catch (error) {
     console.error(
       `Failed to rename channel ${channel.id} to ${desiredName}:`,
