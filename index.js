@@ -318,10 +318,10 @@ await botClient.createSlashCommand(
       });
       return;
     }
-    if (!/^[a-z0-9]+$/i.test(factionName)) {
+    if (!/^[a-z]+$/i.test(factionName)) {
       await interaction.reply({
         content:
-          "Faction name must be alphanumeric only (no spaces or symbols).",
+          "Faction name must use letters only (A-Z). No numbers, spaces, or symbols.",
         flags: MessageFlags.Ephemeral,
       });
       return;
