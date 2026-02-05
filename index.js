@@ -188,6 +188,46 @@ const updateFactionChatCounts = async (guild, counts) => {
   }
 };
 
+const updateSingleFactionChatCountFromCache = async (guild, factionName) => {
+  const roles = await guild.roles.fetch();
+  const memberRoleName = normalize(buildMemberRoleName(factionName));
+  const leaderRoleName = normalize(buildLeaderRoleName(factionName));
+  const requestRoleName = normalize(buildRequestRoleName(factionName));
+
+  let total = 0;
+  for (const role of roles.values()) {
+    const roleName = normalize(role.name);
+    if (
+      roleName === memberRoleName ||
+      roleName === leaderRoleName ||
+      roleName === requestRoleName
+    ) {
+      total += role.members?.size ?? 0;
+    }
+  }
+
+  const channels = await guild.channels.fetch();
+  const factionChatCategory = channels.find(
+    (channel) =>
+      channel?.type === ChannelType.GuildCategory &&
+      normalize(channel.name) === "faction chat"
+  );
+  if (!factionChatCategory) return;
+
+  const channel = channels.find(
+    (ch) =>
+      ch?.type === ChannelType.GuildText &&
+      ch.parentId === factionChatCategory.id &&
+      matchesPublicChatName(ch.name, factionName)
+  );
+
+  if (!channel) return;
+  const desiredName = buildPublicChatNameWithCount(factionName, total);
+  if (channel.name !== desiredName) {
+    await channel.setName(desiredName);
+  }
+};
+
 client.once("clientReady", () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
@@ -225,6 +265,27 @@ client.on("guildMemberUpdate", async (oldMember, newMember) => {
     );
     if (toRemove.size > 0) {
       await newMember.roles.remove(toRemove);
+    }
+  }
+
+  const changedFactionRoles = new Set();
+  for (const role of addedRoles.values()) {
+    const faction = getFactionFromRoleName(role.name);
+    if (faction) changedFactionRoles.add(faction);
+  }
+  for (const role of oldFactionRoles.values()) {
+    if (!newFactionRoles.has(role.id)) {
+      const faction = getFactionFromRoleName(role.name);
+      if (faction) changedFactionRoles.add(faction);
+    }
+  }
+
+  if (changedFactionRoles.size > 0) {
+    for (const faction of changedFactionRoles) {
+      await updateSingleFactionChatCountFromCache(
+        newMember.guild,
+        faction
+      );
     }
   }
 
