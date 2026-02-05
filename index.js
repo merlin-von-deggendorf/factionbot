@@ -315,14 +315,7 @@ client.on("guildMemberUpdate", async (oldMember, newMember) => {
     }
   }
 
-  if (changedFactionRoles.size > 0) {
-    for (const faction of changedFactionRoles) {
-      await updateSingleFactionChatCountFromCache(
-        newMember.guild,
-        faction
-      );
-    }
-  }
+  // rename handled by periodic process only
 
 });
 
@@ -1299,11 +1292,7 @@ await botClient.createSlashCommand(
         : lines.join("\n"),
     });
 
-    try {
-      await updateFactionChatCounts(guild, counts);
-    } catch (error) {
-      console.error("Failed to update faction chat counts:", error);
-    }
+    // rename handled by periodic process only
 
   },
   "Count faction roles",
