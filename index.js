@@ -1292,6 +1292,15 @@ await botClient.createSlashCommand(
 
 await botClient.syncCommands();
 
-setInterval(() => {
-  // periodic task placeholder
-}, 5 * 60 * 1000);
+setInterval(async () => {
+  try {
+    const guilds = client.guilds.cache.values();
+    for (const guild of guilds) {
+      const { counts } = await getFactionCountsWithFallback(guild);
+      if (counts.size === 0) continue;
+      await updateFactionChatCounts(guild, counts);
+    }
+  } catch (error) {
+    console.error("Periodic faction count update failed:", error);
+  }
+}, 35 * 1000);
