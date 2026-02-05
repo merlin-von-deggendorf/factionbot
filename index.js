@@ -1303,4 +1303,4 @@ setInterval(async () => {
   } catch (error) {
     console.error("Periodic faction count update failed:", error);
   }
-}, 35 * 1000);
+}, 5*60 * 1000);
