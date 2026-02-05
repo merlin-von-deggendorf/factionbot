@@ -163,7 +163,7 @@ const formatFactionCounts = (counts) => {
 const renameChannelWithTimeout = async (
   channel,
   desiredName,
-  timeoutMs = 60000
+  timeoutMs = 10000
 ) => {
   const timeout = new Promise((_, reject) =>
     setTimeout(() => reject(new Error("RENAME_TIMEOUT")), timeoutMs)
