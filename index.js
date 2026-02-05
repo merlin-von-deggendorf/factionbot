@@ -67,9 +67,7 @@ const matchesPublicChatName = (channelName, factionName) => {
   const normalized = normalize(channelName);
   const base = normalize(factionName);
   if (normalized === base) return true;
-  if (!normalized.startsWith(`${base}${PUBLIC_CHAT_SEPARATOR}`)) return false;
-  const suffix = normalized.slice(base.length + PUBLIC_CHAT_SEPARATOR.length);
-  return /^\d+$/.test(suffix);
+  return normalized.startsWith(`${base}${PUBLIC_CHAT_SEPARATOR}`);
 };
 
 const buildPublicChatNameWithCount = (factionName, count) => {
