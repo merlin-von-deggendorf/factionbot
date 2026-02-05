@@ -21,6 +21,7 @@ const MEMBER_SUFFIX = " | member";
 const LEADER_SUFFIX = " | leader";
 const REQUEST_SUFFIX = " | request";
 const FACTION_MANAGER_ROLE_NAME = "factionmanager";
+const PUBLIC_CHAT_SEPARATOR = "-";
 
 const client = botClient.getClient();
 
@@ -60,6 +61,17 @@ const getFactionFromRoleName = (name) => {
     return name.slice(0, name.length - REQUEST_SUFFIX.length);
   }
   return null;
+};
+
+const matchesPublicChatName = (channelName, factionName) => {
+  const normalized = normalize(channelName);
+  const base = normalize(factionName);
+  if (normalized === base) return true;
+  return normalized.startsWith(`${base}${PUBLIC_CHAT_SEPARATOR}`);
+};
+
+const buildPublicChatNameWithCount = (factionName, count) => {
+  return `${factionName}${PUBLIC_CHAT_SEPARATOR}${count}`;
 };
 
 const countFactionRoles = async (guild) => {
@@ -199,6 +211,9 @@ await botClient.createSlashCommand(
           parentName === "faction chat" ||
           parentName === "faction intern"
         ) {
+          if (parentName === "faction chat") {
+            return matchesPublicChatName(channelName, vanillaName);
+          }
           return channelName === vanillaName;
         }
         return false;
@@ -1133,6 +1148,38 @@ await botClient.createSlashCommand(
         : lines.join("\n"),
     });
 
+    try {
+      const channels = await guild.channels.fetch();
+      const factionChatCategory = channels.find(
+        (channel) =>
+          channel?.type === ChannelType.GuildCategory &&
+          normalize(channel.name) === "faction chat"
+      );
+      if (factionChatCategory) {
+        const updates = [];
+        for (const [faction, c] of counts.entries()) {
+          const desiredName = buildPublicChatNameWithCount(
+            faction,
+            c.total
+          );
+          const channel = channels.find(
+            (ch) =>
+              ch?.type === ChannelType.GuildText &&
+              ch.parentId === factionChatCategory.id &&
+              matchesPublicChatName(ch.name, faction)
+          );
+          if (channel && channel.name !== desiredName) {
+            updates.push(channel.setName(desiredName));
+          }
+        }
+        if (updates.length > 0) {
+          await Promise.all(updates);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to update faction chat counts:", error);
+    }
+
   },
   "Count faction roles",
   "guild"
@@ -1180,6 +1227,9 @@ await botClient.createSlashCommand(
         parentName === "private chat" ||
         parentName === "private voice"
       ) {
+        if (parentName === "faction chat") {
+          return matchesPublicChatName(channelName, vanillaName);
+        }
         return channelName === vanillaName;
       }
       return false;
